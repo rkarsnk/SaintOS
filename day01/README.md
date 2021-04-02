@@ -1,7 +1,7 @@
 # 1日目
 ## バイナリエディタでHello,Worldを作成
 以下の内容でファイルを作成する。
-- 入力内容: [BOOTX64_EFI.txt](./BOOTX64_EFI.txt)
+- 入力内容: [BOOTX64_EFI.txt](.asm/BOOTX64_EFI.txt)
 - 保存先ファイル名:BOOTX64.EFI
 ## QEMUで動作確認
 ### 準備
@@ -33,4 +33,13 @@ qemu-system-x86_64 \
 -drive if=pflash,file=./OVMF_CODE.fd \
 -drive if=pflash,file=./OVMF_VAR.fd \
 -hda disk.img
+```
+## C言語でHello,Worldを作成
+### ただの写経
+- [hello.c](./c/hello.c)
+### コンパイル & リンク
+```
+$ clang -target x86_64-pc-win32-coff \
+       -mno-red-zone -fno-stack-protector -fshort-wchar -Wall -c hello.c 
+$ lld-link /subsystem:efi_application /entry:EfiMain /out:hello.efi hello.o
 ```
