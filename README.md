@@ -5,3 +5,9 @@
 ## 記録
 - [1日目](./day01)
 - [2日目](./day02)
+
+## EDK2のダウンロード
+```
+git clone --recursive git@github.com:tianocore/edk2.git
+```
+`--recursive`をつけないとsubmoduleがダウンロードできず、BaseToolsのビルドに失敗する
