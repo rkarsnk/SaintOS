@@ -21,7 +21,7 @@ $ touch Wokrspace/README.md
 ### 2. MikanOS関連のリポジトリを取得する
 ``` sh
 $ git clone git@github.com:uchan-nos/mikanos-build.git ~/osbook
-$ git clone git@github.com:uchan_nos/mikanos ~/mikanos
+$ git clone git@github.com:uchan_nos/mikanos.git ~/mikanos
 ```
 
 ### 3. 必要なパッケージをインストールする
