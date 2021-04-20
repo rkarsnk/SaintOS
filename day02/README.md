@@ -55,6 +55,7 @@ $ run_qemu.sh edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi
 ```
 
 ## 2. メモリマップの取得
+### 2.1 UEFI BootServiceについて
 ### 2.1 動作確認
 ![動作確認](./day02.png)
 ### 2.2 取得出来たメモリマップ
