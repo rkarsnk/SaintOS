@@ -20,7 +20,7 @@ fi
 
 rm -f $DISK_IMG
 qemu-img create -f raw $DISK_IMG 200M
-mkfs.fat -n 'MIKAN OS' -s 2 -f 2 -R 32 -F 32 $DISK_IMG
+mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $DISK_IMG
 
 $DEVENV_DIR/mount_image.sh $DISK_IMG $MOUNT_POINT
 sudo mkdir -p $MOUNT_POINT/EFI/BOOT
