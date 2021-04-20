@@ -1,20 +1,20 @@
 # 2日目
-## 1. EDK2を利用したHello,Worldの作成
-### 1.1. EDK2の取得
+# 1. EDK2を利用したHello,Worldの作成
+## 1.1. EDK2の取得
 ```
 cd ~/Workspace
 git clone --recursive git@github.com:tianocore/edk2.git
 ```
 `--recursive`オプションをつけないとsubmoduleがダウンロードできず、BaseToolsのビルドに失敗する
 
-### 1.2. EDK2 BaseToolsのビルド
+## 1.2. EDK2 BaseToolsのビルド
 ```
 $ cd ~/Workspace/edk2
 $ make -C BaseTools/Source/C
 ```
 ※1.1と1.2の作業はmikanos-build内のplaybookで自動化されているが、自学のために手動で実行した。
 
-### 1.3. プログラムの作成
+## 1.3. プログラムの作成
 - EDK2アプリ
   - [MikanLoaderPkg/Main.c](./MikanLoaderPkg/Main.c)
 - コンポーネント定義ファイル
@@ -24,7 +24,7 @@ $ make -C BaseTools/Source/C
 - パッケージ記述ファイル
   - [MikanLoaderPkg/MikanLoaderPkg.dsc](./MikanLoaderPkg/MikanLoaderPkg.dsc)
 
-### 1.4. プログラムのビルド
+## 1.4. プログラムのビルド
 ```
 $ cd ~/Workspace/edk2
 $ ln -s ../day02/MikanLoaderPkg ./
@@ -47,16 +47,79 @@ $ build
 `edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi`に目的のファイルが生成される。
 
 
-### 1.5. 動作確認
+## 1.5. 動作確認
 生成されたLoader.efiをQEMUで起動し、"Hello, Mikan World!"と出力されることを確認する。
 ```
 $ cd ~/Workspace
 $ run_qemu.sh edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi
 ```
 
-## 2. メモリマップの取得
-### 2.1 UEFI BootServiceについて
+# 2. メモリマップの取得
+## 2.1 概要
+- BootSerivceのGetMemoryMapを使ってメモリマップを取得する。
+- BootSerivceのOpenProtocolを使って取得したメモリマップをファイルに書き出す。
 
+## 2.2 使った関数
+### gBS->GetMemoryMap()
+#### プロトタイプ宣言
+```
+typedef
+EFI_STATUS
+(EFIAPI *EFI_GET_MEMORY_MAP) (
+  IN OUT UINTN *MemoryMapSize,
+  OUT EFI_MEMORY_DESCRIPTOR *MemoryMap,
+  OUT UINTN *MapKey,
+  OUT UINTN *DescriptorSize,
+  OUT UINT32 *DescriptorVersion
+);
+ ```
+
+#### 使用例
+```
+  map->map_size = map->buffer_size;
+  return gBS->GetMemoryMap(
+      &map->map_size,
+      (EFI_MEMORY_DESCRIPTOR *)map->buffer,
+      &map->map_key,
+      &map->descriptor_size,
+      &map->descriptor_version);
+```
+
+
+### gBS->OpenProtocol()
+#### プロトタイプ宣言
+```
+typedef
+EFI_STATUS(EFIAPI *EFI_OPEN_PROTOCOL) (
+  IN EFI_HANDLE      Handle,
+  IN EFI_GUID        *Protocol,
+  OUT VOID           **InterfaceOPTIONAL,
+  IN EFI_HANDLE      AgentHandle,
+  IN EFI_HANDLE      ControllerHandle,
+  IN UINT32          Attributes 
+);
+```
+#### 使用例
+```
+  EFI_LOADED_IMAGE_PROTOCOL *loaded_image;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs;
+
+  gBS->OpenProtocol(
+      image_handle,
+      &gEfiLoadedImageProtocolGuid,
+      (VOID **)&loaded_image,
+      image_handle,
+      NULL,
+      EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+
+  gBS->OpenProtocol(
+      loaded_image->DeviceHandle,
+      &gEfiSimpleFileSystemProtocolGuid,
+      (VOID **)&fs,
+      image_handle,
+      NULL,
+      EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+```
 
 ### 2.2 動作確認
 ![動作確認](./day02.png)
