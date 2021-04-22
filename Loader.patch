@@ -1,0 +1,12 @@
+20c20
+< ACTIVE_PLATFORM       = EmulatorPkg/EmulatorPkg.dsc
+---
+> ACTIVE_PLATFORM       = StOSLoaderPkg/StOSLoaderPkg.dsc
+44c44
+< TARGET_ARCH           = IA32
+---
+> TARGET_ARCH           = X64
+54c54
+< TOOL_CHAIN_TAG        = VS2015x86
+---
+> TOOL_CHAIN_TAG        = CLANG38
