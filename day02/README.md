@@ -16,25 +16,25 @@ $ make -C BaseTools/Source/C
 
 ## 1.3. プログラムの作成
 - EDK2アプリ
-  - [MikanLoaderPkg/Main.c](./MikanLoaderPkg/Main.c)
+  - [StOSLoaderPkg/Main.c](../StOSLoaderPkg/Main.c)
 - コンポーネント定義ファイル
-  - [MikanLoaderPkg/Loader.inf](./Loader.inf)
+  - [StOSLoaderPkg/Loader.inf](../StOSLoaderPkg/Loader.inf)
 - パッケージ宣言ファイル
-  - [MikanLoaderPkg/MikanLoaderPkg.dec](./MikanLoaderPkg/MikanLoaderPkg.dec)
+  - [StOSLoaderPkg/StOSLoaderPkg.dec](../StOSLoaderPkg/MikanLoaderPkg.dec)
 - パッケージ記述ファイル
-  - [MikanLoaderPkg/MikanLoaderPkg.dsc](./MikanLoaderPkg/MikanLoaderPkg.dsc)
+  - [StOSLoaderPkg/StOSLoaderPkg.dsc](../StOSLoaderPkg/MikanLoaderPkg.dsc)
 
 ## 1.4. プログラムのビルド
 ```
 $ cd ~/Workspace/edk2
-$ ln -s ../day02/MikanLoaderPkg ./
+$ ln -s ../day02/StOSLoaderPkg ./
 $ source edksetup.sh
 ```
 生成されたConf/target.txtの以下の内容を変更する
 
 |項目|値|
 |--- |---|
-|ACTIVE_PLATFORM | MikanLoaderPkg/MikanLoaderPkg.dsc|
+|ACTIVE_PLATFORM | StOSLoaderPkg/StOSLoaderPkg.dsc|
 |TARGET|DEBUG|
 |TARGET_ARCH|X64|
 |TOOL_CHAIN_TAG|CLANG38|
@@ -44,14 +44,14 @@ EDK2付属のbuildコマンド使用してビルドする.(コマンドの本体
 $ cd ~/Workspace/edk2
 $ build
 ```
-`edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi`に目的のファイルが生成される。
+`edk2/Build/StOSLoaderX64/DEBUG_CLANG38/X64/Loader.efi`に目的のファイルが生成される。
 
 
 ## 1.5. 動作確認
 生成されたLoader.efiをQEMUで起動し、"Hello, Mikan World!"と出力されることを確認する。
 ```
 $ cd ~/Workspace
-$ run_qemu.sh edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi
+$ run_qemu.sh edk2/Build/StOSLoaderX64/DEBUG_CLANG38/X64/Loader.efi
 ```
 
 # 2. メモリマップの取得
