@@ -19,6 +19,8 @@
   UefiApplicationEntryPoint
 
 [Guids]
+# EFIファイルシステム呼び出しで利用
+  gEfiFileInfoGuid
 
 [Protocols]
   gEfiLoadedImageProtocolGuid
