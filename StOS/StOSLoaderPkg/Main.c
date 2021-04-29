@@ -47,7 +47,7 @@ EFI_STATUS GetMemoryMap(struct MemoryMap *map){
       &map->descriptor_version);
 }
 
-const CHAR16 *GetMemoryTypeUnicode(EFI_MEMORY_TYPE type){
+const CHAR16* GetMemoryTypeUnicode(EFI_MEMORY_TYPE type){
   switch (type){
   case EfiReservedMemoryType:
     return L"EfiReservedMemoryType";
@@ -261,16 +261,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   kernel_file->Read(kernel_file, &kernel_file_size, (VOID*)kernel_base_addr);
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
 
-  Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
-      gop->Mode->Info->HorizontalResolution,
-      gop->Mode->Info->VerticalResolution,
-      GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
-      gop->Mode->Info->PixelsPerScanLine);
-  Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
-      gop->Mode->FrameBufferBase,
-      gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
-      gop->Mode->FrameBufferSize);
-
   /* EFI BootServiceの終了 */
   EFI_STATUS status;
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
@@ -290,9 +280,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   // kernelの呼び出し
   UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
 
-  typedef void EntryPointType(void);
+  typedef void EntryPointType(UINT64, UINT64);
   EntryPointType* entry_point = (EntryPointType*)entry_addr;
-  entry_point();
+  entry_point(gop->Mode->FrameBufferBase, gop->Mode->FrameBufferSize);
 
   Print(L"All done\n");
 

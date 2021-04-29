@@ -1,12 +1,20 @@
 # Makefile for StOS
 SHELL=/bin/bash
-SOURCEDIR=./StOS
+WORKDIR=$(shell pwd)
+SOURCEDIR=${WORKDIR}/StOS
+BASEDIR=${WORKDIR}/devenv/x86_64-elf
+EDK2DIR=${WORKDIR}/edk2
+CPPFLAGS += -I${BASEDIR}/include/c++/v1 -I${BASEDIR}/include -I${BASEDIR}/include/freetype2 \
+            -I${EDK2DIR}/MdePkg/Include -I${EDK2DIR}/MdePkg/Include/X64 -nostdlibinc \
+             -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS -DEFIAPI='__attribute__((ms_abi))'
+CXXFLAGS += -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone \
+	        -fno-exceptions -fno-rtti -std=c++17
+LDFLAGS += -L${BASEDIR}/lib
 
 
 kernel:
-	cd ${SOURCEDIR}/$@; clang++ -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone \
-	-fno-exceptions -fno-rtti -std=c++17 -c main.cpp ;\
-	ld.lld --entry KernelMain -z norelro --image-base 0x100000 --static -o kernel.elf main.o
+	cd ${SOURCEDIR}/$@; clang++ ${CPPFLAGS} ${CXXFLAGS} -c main.cpp ;\
+	ld.lld ${LDFLAGS} --entry KernelMain -z norelro --image-base 0x100000 --static -o kernel.elf main.o
 
 # checkout mikanos-build
 osbook:

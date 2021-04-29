@@ -1,16 +1,20 @@
 {
     "files.autoSave": "onFocusChange",
-    "clang.cxxflags": [
-        "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
-        "${workspaceFolder}/edk2/MdePkg/Include"
+    "clang.executable": "/usr/bin/clang",
+    "clang.cflags": [
+        "-I${workspaceRoot}/edk2/BaseTools/Source/C/Include/X64",
+        "-I${workspaceRoot}/edk2/MdePkg/Include"
     ],
-    "workbench.colorTheme": "Default Light+",
-    "C_Cpp.default.includePath": [
-        "${default}",
-        "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
-        "${workspaceFolder}/edk2/MdePkg/Include"
+    "clang.completion.enable":true,
+    "clang.completion.maxBuffer":8388608,
+    "clang.completion.triggerChars": [
+        ".",
+        ":",
+        ">"
     ],
-    "files.associations": {
-        "memoryallocationlib.h": "c"
-    }
+    "clang.diagnostic.enable": true,
+    "clang.diagnostic.maxBuffer": 262144,
+    "clang.diagnostic.delay": 500,
+
+    "workbench.colorTheme": "Default Light+"
 }
