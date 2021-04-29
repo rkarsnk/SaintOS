@@ -1,0 +1,16 @@
+{
+    "files.autoSave": "onFocusChange",
+    "clang.cxxflags": [
+        "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
+        "${workspaceFolder}/edk2/MdePkg/Include"
+    ],
+    "workbench.colorTheme": "Default Light+",
+    "C_Cpp.default.includePath": [
+        "${default}",
+        "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
+        "${workspaceFolder}/edk2/MdePkg/Include"
+    ],
+    "files.associations": {
+        "memoryallocationlib.h": "c"
+    }
+}

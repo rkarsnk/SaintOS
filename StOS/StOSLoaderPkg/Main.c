@@ -1,9 +1,10 @@
 #include <Uefi.h>
 #include <Library/UefiLib.h>
 #include <Library/UefiBootServicesTableLib.h>
-#include <Library/PrintLib.h>
 #include <Library/UefiRuntimeLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/PrintLib.h>
+#include <Library/MemoryAllocationLib.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/DiskIo2.h>
@@ -12,11 +13,14 @@
 
 // \kernel.elf を含む12文字
 #define LEN_OF_KERNFILENAME 12
+// kernel base address
 #define KERN_BASE_ADDR 0x100000;
-
+// UEFI Page size 4KiB
 #define UEFI_PAGE_SIZE 0x1000
-
+// ELF形式のENTRYPOINT Offset
 #define ENTRY_POINT_OFFSET 24
+// FrameBuffer Color white
+#define FRAME_BUFFER_COLOR 255
 
 /* MemoryMap structure */
 struct MemoryMap{
@@ -113,8 +117,7 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file){
 }
 
 /* OpenRootDir */
-EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root)
-{
+EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root){
   EFI_LOADED_IMAGE_PROTOCOL *loaded_image;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs;
 
@@ -139,6 +142,49 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root)
   return EFI_SUCCESS;
 }
 
+/* OpenGOP GOP:Graphics Output Protocol */
+EFI_STATUS OpenGOP(EFI_HANDLE image_handle, EFI_GRAPHICS_OUTPUT_PROTOCOL** gop){
+  UINTN num_gop_handles = 0;
+  EFI_HANDLE* gop_handles = NULL;
+  gBS->LocateHandleBuffer(
+    ByProtocol,
+    &gEfiGraphicsOutputProtocolGuid,
+    NULL,
+    &num_gop_handles,
+    &gop_handles);
+  
+  gBS->OpenProtocol(
+    gop_handles[0],
+    &gEfiGraphicsOutputProtocolGuid,
+    (VOID**)gop,
+    image_handle,
+    NULL,
+    EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+
+  FreePool(gop_handles);
+
+  return EFI_SUCCESS;
+}
+
+/* GetPixelFormatUnicode */
+const CHAR16* GetPixelFormatUnicode(EFI_GRAPHICS_PIXEL_FORMAT fmt){
+  switch (fmt) {
+    case PixelRedGreenBlueReserved8BitPerColor:
+      return L"PixelRedGreenBlueReserved8BitPerColor";
+    case PixelBlueGreenRedReserved8BitPerColor:
+      return L"PixelBlueGreenRedReserved8BitPerColor";
+    case PixelBitMask:
+      return L"PixelBitMask";
+    case PixelBltOnly:
+      return L"PixelBltOnly";
+    case PixelFormatMax:
+      return L"PixelFormatMax";
+    default:
+      return L"InvalidPixelFormat";
+  }
+}
+
+
 /* UefiMain */
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 {
@@ -162,6 +208,26 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
 
   SaveMemoryMap(&memmap, memmap_file);
   memmap_file->Close(memmap_file);
+
+  /*フレームバッファ初期化*/
+  EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
+  OpenGOP(image_handle, &gop);
+  Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
+      gop->Mode->Info->HorizontalResolution,
+      gop->Mode->Info->VerticalResolution,
+      GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
+      gop->Mode->Info->PixelsPerScanLine);
+  Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
+      gop->Mode->FrameBufferBase,
+      gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
+      gop->Mode->FrameBufferSize);
+
+  UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
+  
+  for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
+    frame_buffer[i] = FRAME_BUFFER_COLOR;
+  }
+
 
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_file;
@@ -194,6 +260,16 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     (kernel_file_size + UEFI_PAGE_SIZE - 1 ) / UEFI_PAGE_SIZE, &kernel_base_addr);
   kernel_file->Read(kernel_file, &kernel_file_size, (VOID*)kernel_base_addr);
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
+
+  Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
+      gop->Mode->Info->HorizontalResolution,
+      gop->Mode->Info->VerticalResolution,
+      GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
+      gop->Mode->Info->PixelsPerScanLine);
+  Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
+      gop->Mode->FrameBufferBase,
+      gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
+      gop->Mode->FrameBufferSize);
 
   /* EFI BootServiceの終了 */
   EFI_STATUS status;
