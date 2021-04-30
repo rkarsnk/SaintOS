@@ -12,24 +12,24 @@ CXXFLAGS += -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone \
 LDFLAGS += -L${BASEDIR}/lib
 
 
+prep:
+	git clone https://github.com/uchan-nos/mikanos-build.git osbook
+		git clone --recursive https://github.com/tianocore/edk2.git -b edk2-stable202102 ${EDK2DIR}
+
+
 kernel:
 	cd ${SOURCEDIR}/$@; clang++ ${CPPFLAGS} ${CXXFLAGS} -c main.cpp ;\
 	ld.lld ${LDFLAGS} --entry KernelMain -z norelro --image-base 0x100000 --static -o kernel.elf main.o
 
-# checkout mikanos-build
-osbook:
-	git clone https://github.com/uchan-nos/mikanos-build.git $@
-
 
 # checkout edk2-stable202102
 edk2:
-	git clone --recursive https://github.com/tianocore/edk2.git -b edk2-stable202102 $@
 	make -C edk2/BaseTools/Source/C
 
-edk2/StOSLoaderPkg: edk2 StOS/StOSLoaderPkg
+StOSLoaderPkg: edk2 StOS/StOSLoaderPkg
 	cd edk2; ln -s ../StOS/StOSLoaderPkg ./
 
-StOSLoaderPkg: edk2 edk2/StOSLoaderPkg Loader.patch
+Loader: edk2 Loader.patch
 	cd $<; source edksetup.sh --reconfig;\
 	patch -n Conf/target.txt < ../Loader.patch; \
 	build

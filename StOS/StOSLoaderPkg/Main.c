@@ -184,10 +184,15 @@ const CHAR16* GetPixelFormatUnicode(EFI_GRAPHICS_PIXEL_FORMAT fmt){
   }
 }
 
+/* Halt function */
+void Halt(void) {
+  while (1) __asm__("hlt");
+}
 
 /* UefiMain */
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 {
+  EFI_STATUS status;
   EFI_TIME time;
   gRT->GetTime(&time, NULL);
   Print(L"Hello, St.OS Loader World! %4u-%02u-%2u \n",time.Year, time.Month, time.Day);
@@ -195,23 +200,50 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buffer), memmap_buffer, 0, 0, 0, 0};
-  GetMemoryMap(&memmap);
+  status = GetMemoryMap(&memmap);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to get memory map: %r\n", status);
+    Halt();
+  }
+
 
   /* メモリマップのファイルへの書き出し */
   EFI_FILE_PROTOCOL* root_dir;
-  OpenRootDir(image_handle, &root_dir);
+  status = OpenRootDir(image_handle, &root_dir);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to open root directory: %r\n", status);
+    Halt();
+  }
 
   EFI_FILE_PROTOCOL *memmap_file;
-  root_dir->Open(
+  status = root_dir->Open(
       root_dir, &memmap_file, L"\\memmap",
       EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to open file '\\memmap': %r\n", status);
+    Print(L"Ignored.\n");
+  } else {
+    status = SaveMemoryMap(&memmap, memmap_file);
+    if (EFI_ERROR(status)) {
+      Print(L"failed to save memory map: %r\n", status);
+      Halt();
+    }
+    memmap_file->Close(memmap_file);
+    if (EFI_ERROR(status)) {
+      Print(L"failed to close memory map: %r\n", status);
+      Halt();
+    }
+  }
 
-  SaveMemoryMap(&memmap, memmap_file);
-  memmap_file->Close(memmap_file);
 
   /*フレームバッファ初期化*/
   EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
-  OpenGOP(image_handle, &gop);
+  status = OpenGOP(image_handle, &gop);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to open GOP: %r\n", status);
+    Halt();
+  }
+
   Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
       gop->Mode->Info->HorizontalResolution,
       gop->Mode->Info->VerticalResolution,
@@ -222,19 +254,23 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
       gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
       gop->Mode->FrameBufferSize);
 
+  /* ---------- フレームバッファを白にする----------------
   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
-  
   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
     frame_buffer[i] = FRAME_BUFFER_COLOR;
   }
-
+  ------------------------------------------------------ */
 
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_file;
   // EFIファイルシステムをOpenし、kernel.elfを読み出す
-  root_dir->Open(
+  status = root_dir->Open(
       root_dir, &kernel_file, L"\\kernel.elf",
       EFI_FILE_MODE_READ, 0);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to open file '\\kernel.elf': %r\n", status);
+    Halt();
+  }
 
   // file_info_size はEFI_FILE_INFOのサイズ＋ファイル名長(ヌル文字含む)
   UINTN file_info_size = sizeof(EFI_FILE_INFO) + sizeof(CHAR16) * LEN_OF_KERNFILENAME;
@@ -243,9 +279,13 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   /* kernel.elfファイルの情報取得 */
 
   // file_info_bufferにEFI_FILE_INFO型のデータが書き込まれる
-  kernel_file->GetInfo(
+  status = kernel_file->GetInfo(
     kernel_file, &gEfiFileInfoGuid, 
     &file_info_size, file_info_buffer);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to get file information: %r\n", status);
+    Halt();
+  }
 
   EFI_FILE_INFO* kernel_file_info = (EFI_FILE_INFO*)file_info_buffer;
   UINTN kernel_file_size = kernel_file_info->FileSize;
@@ -255,25 +295,34 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   // kernel_file_sizeが4KiBの倍数とは限らないため、ページ数を切り上げるために
   // kernel_file_sizeに4095を足している
   // ページ数 = ( kernel_file_size + 4095 ) / 4096
-  gBS->AllocatePages(
+  status = gBS->AllocatePages(
     AllocateAddress, EfiLoaderData,
     (kernel_file_size + UEFI_PAGE_SIZE - 1 ) / UEFI_PAGE_SIZE, &kernel_base_addr);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to allocate pages: %r\n", status);
+    Halt();
+  }
+
   kernel_file->Read(kernel_file, &kernel_file_size, (VOID*)kernel_base_addr);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to read kernel file: %r\n", status);
+    Halt();
+  }
+
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
 
   /* EFI BootServiceの終了 */
-  EFI_STATUS status;
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
   if (EFI_ERROR(status)){
     status = GetMemoryMap(&memmap);
     if (EFI_ERROR(status)){
       Print(L"failed to get memory map: %r\n", status);
-      while(1);
+      Halt();
     }
     status=gBS->ExitBootServices(image_handle, memmap.map_key);
     if(EFI_ERROR(status)){
       Print(L"Could not exit boot service: %r\n", status);
-      while(1);
+      Halt();
     }
   }
 
