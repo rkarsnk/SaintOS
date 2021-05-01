@@ -23,9 +23,10 @@ Loader: edk2-c-tools StOSLoaderPkg Loader.patch
 	cd ${EDK2DIR}; source edksetup.sh --reconfig;\
 	patch -n Conf/target.txt < ${LOADER_PATCH}; \
 	build
+	cp ${EDK2DIR}/Build/StOSLoaderX64/DEBUG_CLANG38/X64/Loader.efi ./Loader.efi
 
 .PHONY: StOSLoaderPkg
-StOSLoaderPkg: edk2-c-tools
+StOSLoaderPkg: ${SOURCEDIR}/StOSLoaderPkg 
 	ln -s ${SOURCEDIR}/StOSLoaderPkg ${EDK2DIR}/StOSLoaderPkg
 
 .PHONY: edk2-c-tools
@@ -36,6 +37,7 @@ edk2-c-tools: Makefile ${EDK2DIR}
 .PHONY: kernel
 kernel: ${SOURCEDIR}/kernel
 	make -C $< all WORKDIR=${WORKDIR}
+	cp ${SOURCEDIR}/kernel/kernel.elf ./kernel.elf
 
 # .PHONY: x86_64-elf
 # x86_64-elf: Dockerfile

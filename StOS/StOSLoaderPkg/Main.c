@@ -10,6 +10,7 @@
 #include <Protocol/DiskIo2.h>
 #include <Protocol/BlockIo.h>
 #include <Guid/FileInfo.h>
+#include "frame_buffer_config.hpp"
 
 // \kernel.elf を含む12文字
 #define LEN_OF_KERNFILENAME 12
@@ -244,22 +245,21 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     Halt();
   }
 
-  Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
+  Print(L"Resolution: %u * %u\nPixel Format: %s, %u pixels/line\n",
       gop->Mode->Info->HorizontalResolution,
       gop->Mode->Info->VerticalResolution,
       GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
       gop->Mode->Info->PixelsPerScanLine);
-  Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
+  Print(L"Frame Buffer: 0x%0lx - 0x%0lx\nFrame Buffer Size: %lu bytes\n",
       gop->Mode->FrameBufferBase,
       gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
       gop->Mode->FrameBufferSize);
-
-  /* ---------- フレームバッファを白にする----------------
+/*
   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
     frame_buffer[i] = FRAME_BUFFER_COLOR;
   }
-  ------------------------------------------------------ */
+*/
 
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_file;
@@ -310,6 +310,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   }
 
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
+  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
+
+  Print(L"Kernel entry_address: 0x%0lx \n", entry_addr);
 
   /* EFI BootServiceの終了 */
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
@@ -327,11 +330,31 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   }
 
   // kernelの呼び出し
-  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
+//  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
 
-  typedef void EntryPointType(UINT64, UINT64);
+
+  struct FrameBufferConfig config = {
+    (UINT8*)gop->Mode->FrameBufferBase,
+    gop->Mode->Info->PixelsPerScanLine,
+    gop->Mode->Info->HorizontalResolution,
+    gop->Mode->Info->VerticalResolution,
+    0 
+  };
+  switch (gop->Mode->Info->PixelFormat) {
+    case PixelRedGreenBlueReserved8BitPerColor:
+      config.pixel_format = kPixelRGBResv8BitPerColor;
+      break;
+    case PixelBlueGreenRedReserved8BitPerColor:
+      config.pixel_format = kPixelBGRResv8BitPerColor;
+      break;
+    default:
+      Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
+      Halt();
+  }
+  
+  typedef void EntryPointType(const struct FrameBufferConfig*);
   EntryPointType* entry_point = (EntryPointType*)entry_addr;
-  entry_point(gop->Mode->FrameBufferBase, gop->Mode->FrameBufferSize);
+  entry_point(&config);
 
   Print(L"All done\n");
 

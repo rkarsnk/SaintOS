@@ -1,16 +1,18 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "StOS C/C++",
             "includePath": [
                 "${default}",
                 "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
-                "${workspaceFolder}/edk2/MdePkg/Include"
+                "${workspaceFolder}/edk2/MdePkg/Include",
+                "${workspaceFolder}/devenv/x86_64-elf/include/c++/v1",
+                "${workspaceFolder}/devenv/x86_64-elf/include",
+                "${workspaceFolder}/devenv/x86_64-elf/include/freetype2"
             ],
-            "defines": [],
-            "compilerPath": "/usr/bin/clang++",
+            "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",
-            "cppStandard": "c++14",
+            "cppStandard": "c++17",
             "intelliSenseMode": "linux-clang-x64"
         }
     ],

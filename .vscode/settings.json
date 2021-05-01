@@ -1,20 +1,5 @@
 {
     "files.autoSave": "onFocusChange",
-    "clang.executable": "/usr/bin/clang",
-    "clang.cflags": [
-        "-I${workspaceRoot}/edk2/BaseTools/Source/C/Include/X64",
-        "-I${workspaceRoot}/edk2/MdePkg/Include"
-    ],
-    "clang.completion.enable":true,
-    "clang.completion.maxBuffer":8388608,
-    "clang.completion.triggerChars": [
-        ".",
-        ":",
-        ">"
-    ],
-    "clang.diagnostic.enable": true,
-    "clang.diagnostic.maxBuffer": 262144,
-    "clang.diagnostic.delay": 500,
-
-    "workbench.colorTheme": "Default Light+"
+    "workbench.colorTheme": "Default Light+",
+    "clang.executable": "clang"
 }
