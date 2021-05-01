@@ -2,52 +2,48 @@
 SHELL=/bin/bash
 WORKDIR=$(shell pwd)
 SOURCEDIR=${WORKDIR}/StOS
-BASEDIR=${WORKDIR}/devenv/x86_64-elf
 EDK2DIR=${WORKDIR}/edk2
-CPPFLAGS += -I${BASEDIR}/include/c++/v1 -I${BASEDIR}/include -I${BASEDIR}/include/freetype2 \
-            -I${EDK2DIR}/MdePkg/Include -I${EDK2DIR}/MdePkg/Include/X64 -nostdlibinc \
-             -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS -DEFIAPI='__attribute__((ms_abi))'
-CXXFLAGS += -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone \
-	        -fno-exceptions -fno-rtti -std=c++17
-LDFLAGS += -L${BASEDIR}/lib
+
+LOADER_PATCH=${WORKDIR}/Loader.patch
+
+.PHONY: all
+all: Loader kernel
+
+.PHONY: clean
+clean: 
+	make -C ${SOURCEDIR}/kernel clean WORKDIR=${WORKDIR}
+	rm -rf edk2/Build/*
+	rm -rf edk2/StOSLoaderPkg
 
 
-prep:
-	git clone https://github.com/uchan-nos/mikanos-build.git osbook
-		git clone --recursive https://github.com/tianocore/edk2.git -b edk2-stable202102 ${EDK2DIR}
 
-
-kernel:
-	cd ${SOURCEDIR}/$@; clang++ ${CPPFLAGS} ${CXXFLAGS} -c main.cpp ;\
-	ld.lld ${LDFLAGS} --entry KernelMain -z norelro --image-base 0x100000 --static -o kernel.elf main.o
-
-
-# checkout edk2-stable202102
-edk2:
-	make -C edk2/BaseTools/Source/C
-
-StOSLoaderPkg: edk2 StOS/StOSLoaderPkg
-	cd edk2; ln -s ../StOS/StOSLoaderPkg ./
-
-Loader: edk2 Loader.patch
-	cd $<; source edksetup.sh --reconfig;\
-	patch -n Conf/target.txt < ../Loader.patch; \
+# build Loader.efi
+.PHONY: Loader
+Loader: edk2-c-tools StOSLoaderPkg Loader.patch
+	cd ${EDK2DIR}; source edksetup.sh --reconfig;\
+	patch -n Conf/target.txt < ${LOADER_PATCH}; \
 	build
 
-# create empty qemu disk image
-disk.img:
-	qemu-img create -f raw $@ 200M
-	mkfs.fat -n 'STOS' -s 2 -f 2 -R 32 -F 32 $@
+.PHONY: StOSLoaderPkg
+StOSLoaderPkg: edk2-c-tools
+	ln -s ${SOURCEDIR}/StOSLoaderPkg ${EDK2DIR}/StOSLoaderPkg
 
+.PHONY: edk2-c-tools
+edk2-c-tools: Makefile ${EDK2DIR}
+	make -C ${EDK2DIR}/BaseTools/Source/C
 
-clean:
-	rm -rf disk.img
-	rm -rf edk2/Build
-	rm -rf edk2/StOSLoaderPkg
-	rm -rf StOS/kernel/main.o
+# build kernel.elf 
+.PHONY: kernel
+kernel: ${SOURCEDIR}/kernel
+	make -C $< all WORKDIR=${WORKDIR}
 
+# .PHONY: x86_64-elf
+# x86_64-elf: Dockerfile
 
-clean_all:
-	rm -rf edk2
-	rm -rf osbook
+.PHONY: edk2
+edk2: Makefile
+	git clone --depth 1 --recursive -b edk2-stable202102 https://github.com/tianocore/edk2.git  ${EDK2DIR}
 
+.PHONY: osbook
+osbook: Makefile
+	git clone https://github.com/uchan-nos/mikanos-build.git osbook
