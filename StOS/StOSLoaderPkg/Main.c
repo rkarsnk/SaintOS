@@ -130,6 +130,8 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root){
       NULL,
       EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
+  Print(L"UEFI Image Base :0x%0lx\n",loaded_image->ImageBase);
+
   gBS->OpenProtocol(
       loaded_image->DeviceHandle,
       &gEfiSimpleFileSystemProtocolGuid,
@@ -195,8 +197,14 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
 {
   EFI_STATUS status;
   EFI_TIME time;
-  gRT->GetTime(&time, NULL);
+  status = gRT->GetTime(&time, NULL);
+  if (EFI_ERROR(status)) {
+    Print(L"failed to get time: %r\n", status);
+    Halt();
+  }
+
   Print(L"Hello, St.OS Loader World! %4u-%02u-%2u \n",time.Year, time.Month, time.Day);
+
 
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
@@ -206,7 +214,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     Print(L"failed to get memory map: %r\n", status);
     Halt();
   }
-
 
   /* メモリマップのファイルへの書き出し */
   EFI_FILE_PROTOCOL* root_dir;
@@ -236,7 +243,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     }
   }
 
-
   /*フレームバッファ初期化*/
   EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
   status = OpenGOP(image_handle, &gop);
@@ -254,12 +260,12 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
       gop->Mode->FrameBufferBase,
       gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
       gop->Mode->FrameBufferSize);
-/*
+/* ---------- フレームバッファを白くする -------------------------------
   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
     frame_buffer[i] = FRAME_BUFFER_COLOR;
   }
-*/
+---------------------------------------------------------------------- */
 
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_file;
@@ -290,6 +296,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   EFI_FILE_INFO* kernel_file_info = (EFI_FILE_INFO*)file_info_buffer;
   UINTN kernel_file_size = kernel_file_info->FileSize;
 
+
   EFI_PHYSICAL_ADDRESS kernel_base_addr = KERN_BASE_ADDR;
   // AllocatePages()の第３引数はページ数。UEFIでの1ページは4KiB。
   // kernel_file_sizeが4KiBの倍数とは限らないため、ページ数を切り上げるために
@@ -310,8 +317,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
   }
 
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
-  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
 
+
+  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + ENTRY_POINT_OFFSET);
   Print(L"Kernel entry_address: 0x%0lx \n", entry_addr);
 
   /* EFI BootServiceの終了 */
@@ -351,7 +359,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
       Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
       Halt();
   }
-  
+
+//__asm__ __volatile__("int $0x03");
+
   typedef void EntryPointType(const struct FrameBufferConfig*);
   EntryPointType* entry_point = (EntryPointType*)entry_addr;
   entry_point(&config);
