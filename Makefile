@@ -4,7 +4,6 @@ WORKDIR=$(shell pwd)
 SOURCEDIR=${WORKDIR}/StOS
 EDK2DIR=${WORKDIR}/edk2
 
-LOADER_PATCH=${WORKDIR}/Loader.patch
 
 OVMFBASE=edk2/Build/OvmfX64/DEBUG_CLANG38
 OVMFCODE=${OVMFBASE}/FV/OVMF_CODE.fd
@@ -38,7 +37,7 @@ clean:
 
 # build Loader.efi
 .PHONY: Loader
-Loader: edk2-c-tools StOSLoaderPkg Loader.patch
+Loader: edk2-c-tools StOSLoaderPkg
 	cd ${EDK2DIR}; source edksetup.sh --reconfig;\
 	build -p StOSLoaderPkg/StOSLoaderPkg.dsc -b DEBUG -a X64 -t CLANG38
 	cp ${EDK2DIR}/Build/StOSLoaderX64/DEBUG_CLANG38/X64/Loader.efi ./Loader.efi
@@ -46,7 +45,7 @@ Loader: edk2-c-tools StOSLoaderPkg Loader.patch
 
 .PHONY: StOSLoaderPkg
 StOSLoaderPkg: ${SOURCEDIR}/StOSLoaderPkg 
-	ln -s ${SOURCEDIR}/StOSLoaderPkg ${EDK2DIR}/StOSLoaderPkg
+	ln -s ${SOURCEDIR}/StOSLoaderPkg ${EDK2DIR}
 
 # build OVMF file
 ovmf: edk2-c-tools
@@ -83,9 +82,9 @@ disk.img: Loader.efi kernel.elf
 
 # QEMU
 .PHONY: run debug
-run:	
-	sudo $(QEMU) $(QEMUFLAGS)
-debug:
+run: disk.img	
+	sudo $(QEMU) $(QEMUFLAGS) -s
+debug: disk.img
 	sudo $(QEMU) $(QEMUFLAGS) -s -S
 
 # .PHONY: x86_64-elf

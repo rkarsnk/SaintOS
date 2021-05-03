@@ -360,8 +360,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
       Halt();
   }
 
-//__asm__ __volatile__("int $0x03");
-
   typedef void EntryPointType(const struct FrameBufferConfig*);
   EntryPointType* entry_point = (EntryPointType*)entry_addr;
   entry_point(&config);
