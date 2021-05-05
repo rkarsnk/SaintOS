@@ -5,3 +5,5 @@ mnt
 kernel.elf
 Loader.efi
 OVMF
+Loader.debug
+debug.log

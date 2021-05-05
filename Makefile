@@ -50,7 +50,7 @@ StOSLoaderPkg: ${SOURCEDIR}/StOSLoaderPkg
 # build OVMF file
 ovmf: edk2-c-tools
 	cd ${EDK2DIR}; source edksetup.sh --reconfig;\
-	build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38 \
+	build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38
 
 # build EDK2 C TOOL
 .PHONY: edk2-c-tools
