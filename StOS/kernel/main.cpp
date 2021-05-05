@@ -10,7 +10,7 @@
 #include "frame_buffer_config.hpp"
 
 // PixelColor 構造体
-struct PixelColor{
+struct PixelColor {
     uint8_t r, g, b;
 };
 
@@ -19,18 +19,20 @@ struct PixelColor{
  * @retval 非0  失敗
  */
 int WritePixel(const FrameBufferConfig& config, int x, int y, const PixelColor& color) {
-    const int pixel_position = config.pixels_per_scal_line * y * x;
+    const int pixel_position = config.pixels_per_scal_line * y + x;
     if (config.pixel_format == kPixelRGBResv8BitPerColor ) {
         uint8_t* p = &config.frame_buffer[4 * pixel_position ];
         p[0] = color.r;
         p[1] = color.g;
         p[2] = color.b;
-    } else if (config.pixel_format == kPixelBGRResv8BitPerColor ) {
+    }
+    else if (config.pixel_format == kPixelBGRResv8BitPerColor ) {
         uint8_t* p = &config.frame_buffer[4 * pixel_position ];
         p[0] = color.b;
         p[1] = color.g;
         p[2] = color.r;
-    } else {
+    }
+    else {
         return -1;
     }
     return 0;
@@ -38,7 +40,7 @@ int WritePixel(const FrameBufferConfig& config, int x, int y, const PixelColor& 
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
     for(int x = 0; x < frame_buffer_config.horizontal_resolution; ++x) {
-        for (int y =0; y< frame_buffer_config.vertical_resolution; ++y) {
+        for (int y = 0; y < frame_buffer_config.vertical_resolution; ++y) {
             WritePixel(frame_buffer_config, x, y, {255, 255, 255});
         }
     }
@@ -47,6 +49,5 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
             WritePixel(frame_buffer_config, 100 + x, 100 + y, {0, 255, 0});
         }
     }
-    while (1)
-        __asm__("hlt");
+    while (1) __asm__("hlt");
 }
