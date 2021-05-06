@@ -10,7 +10,8 @@
 #include <Protocol/DiskIo2.h>
 #include <Protocol/BlockIo.h>
 #include <Guid/FileInfo.h>
-#include "frame_buffer_config.hpp"
+
+#include "LoaderInternal.h"
 
 // \kernel.elf を含む12文字
 #define LEN_OF_KERNFILENAME 12

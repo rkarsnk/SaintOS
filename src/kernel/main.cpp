@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "frame_buffer_config.hpp"
+#include <FrameBufferConfig.hpp>
 
 // PixelColor 構造体
 struct PixelColor {

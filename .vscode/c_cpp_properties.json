@@ -4,11 +4,13 @@
             "name": "StOS C/C++",
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/edk2/BaseTools/Source/C/Include/X64",
-                "${workspaceFolder}/edk2/MdePkg/Include",
-                "${workspaceFolder}/devenv/x86_64-elf/include/c++/v1",
-                "${workspaceFolder}/devenv/x86_64-elf/include",
-                "${workspaceFolder}/devenv/x86_64-elf/include/freetype2"
+                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include/X64",
+                "${workspaceFolder}/tools/edk2/MdePkg/Include",
+                "${workspaceFolder}/tools/x86_64-elf/include/c++/v1",
+                "${workspaceFolder}/tools/x86_64-elf/include",
+                "${workspaceFolder}/tools/x86_64-elf/include/freetype2",
+                "${workspaceFolder}/src/bootloader/Loader/Include",
+                "${workspaceFolder}/src/kernel/include"
             ],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",

@@ -1,9 +1,5 @@
-edk2
-osbook
 disk.img
-mnt
 kernel.elf
 Loader.efi
-OVMF
 Loader.debug
 debug.log

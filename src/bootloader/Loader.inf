@@ -9,7 +9,9 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
-  Main.c
+  Loader.c
+  LoaderInternal.h
+  Include/FrameBufferConfig.hpp
 
 [Packages]
   MdePkg/MdePkg.dec
