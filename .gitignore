@@ -3,3 +3,4 @@ kernel.elf
 Loader.efi
 Loader.debug
 debug.log
+tools/edk2

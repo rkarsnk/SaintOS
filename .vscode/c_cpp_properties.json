@@ -9,7 +9,7 @@
                 "${workspaceFolder}/tools/x86_64-elf/include/c++/v1",
                 "${workspaceFolder}/tools/x86_64-elf/include",
                 "${workspaceFolder}/tools/x86_64-elf/include/freetype2",
-                "${workspaceFolder}/src/bootloader/Loader/Include",
+                "${workspaceFolder}/src/bootloader/Include",
                 "${workspaceFolder}/src/kernel/include"
             ],
             "compilerPath": "/usr/bin/clang",
