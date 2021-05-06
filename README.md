@@ -1,3 +1,6 @@
+# SaintOS
+カナやん（rkarsnk）がまったり作っているOS．
+## ロゴ
 ```
 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
   / ____|      _       _   / __ \ / ____|
@@ -9,11 +12,11 @@ _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
                  Copyleft 2021 rkarsnk.jp.
 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 ```
-カナやん（rkarsnk）がまったり作っているOS．
 
----
-# 開発環境
-## 使用しているOS/Tool
+ASCIIロゴジェネレーター(https://patorjk.com/software/taag/) を使って作成しています．
+
+## 開発環境
+### 使用しているOS/Tool
 
 |項目|名称|
 |---|---|
@@ -23,19 +26,51 @@ _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 |エミュレーター|QEMU 4.2.1 (1:4.2-3ubuntu6.15)|
 |UEFI SDK|EDK II (edk2-stable202102)|
 
-## ディレクトリ構成
 
+### ディレクトリ構成
+```
+SaintOS
+├── Makefile
+├── README.md
+├── docs
+│   └── HOW_TO_DEBUG.md
+├── esp           <--デバッグ用に予約しているESP領域用ディレクトリ
+├── hello
+│   ├── asm
+│   └── c
+├── note
+│   ├── day01
+│   ├── day02
+│   ├── day03
+│   └── day04
+├── src
+│   ├── bootloader
+│   └── kernel
+└── tools
+    ├── edk2        <--submodule
+    └── x86_64-elf
+```
 
 ## 準備
+edk2のリポジトリの取得します．
+```
+make prep
+```
+内部処理では，EDK II(edk2-stable202102)を取得します．
 
+## ビルド
+次のコマンドでビルドします．
+```
+make all
+```
 
-# ビルド
+## デモ
+次のコマンドでQEMU用のディスクイメージを作成し，QEMUを起動します．
+```
+make run
+```
 
-
-# デモ
-
-
-# 参考文献
+## 参考文献
 - 内田公太:"ゼロからのOS自作入門",株式会社マイナビ出版(2021).
 - MikanOS, https://github.com/uchan-nos/mikanos
 - EDK II, https://github.com/tianocore/edk2
