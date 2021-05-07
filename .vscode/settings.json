@@ -3,5 +3,6 @@
     "workbench.colorTheme": "Default Light+",
     "clang.executable": "clang",
     "editor.fontFamily": "'Noto Mono','monospace', \"Ricty Diminished Discord with-icons\", 'Droid Sans Fallback'",
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "C_Cpp.errorSquiggles": "Disabled"
 }
