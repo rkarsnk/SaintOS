@@ -1,13 +1,4 @@
-# [WIP] GDBでEFIアプリケーションデバッグする
-## 参考文献
-- [How-to-run-OVMF (tianocore)](https://github.com/tianocore/tianocore.github.io/wiki/How-to-run-OVMF)
-- [How to debug OVMF with QEMU using GDB (tianocore)](https://github.com/tianocore/tianocore.github.io/wiki/How-to-debug-OVMF-with-QEMU-using-GDB)
-- [Debugging_UEFI_applications_with_GDB (wiki.osdev.org)](https://wiki.osdev.org/Debugging_UEFI_applications_with_GDB)
-- [UEFI OVMF symbol load script for GDB (artem-nefedov/uefi-gdb)](https://github.com/artem-nefedov/uefi-gdb)
-- [QEMUで実行されているGRUB2 EFIイメージをデバッグする](https://tutorialmore.com/questions-2526193.htm)
-- [OVMFのデバッグ](https://retrage.github.io/2019/11/05/debugging-ovmf.html)
-
----
+# GDBでEFIアプリケーションデバッグする
 ## DEBUG準備
 UEFIモードで起動したQEMUで、debug.logを出力できるようにする。\
 DEBUGに対応したOVMFが必要であるため、EDK2からビルドする。
@@ -31,72 +22,56 @@ sudo qemu-system-x86_64 -m 1G \
    -drive if=ide,index=0,media=disk,format=raw,file=disk.img \
    -device nec-usb-xhci,id=xhci -device usb-mouse -device usb-kbd \
    -debugcon file:debug.log -global isa-debugcon.iobase=0x402 \
-   -monitor stdio
+   -monitor stdio \
+   -s
 ```
 上のコマンドでは、みかん本のQEMU起動オプションに対して、以下の変更を加えています。
 - OVMFファイルの差し替え
 - `-debugcon file:debug.log -global isa-debugcon.iobase=0x402` の追加
+- `-s`の追加．gdbserverをポート1234で起動する.
 
-## debug.logを取得する
+---
+## `debug.log`から`Loader.efi`のベースアドレスを調べる
 QEMUを起動すると以下のようなdebug.logが出力される
 ```
 [debug.log]
-SecCoreStartupWithStack(0xFFFCC000, 0x820000)
-... (略) ...
-FSOpen: Open '\EFI\BOOT\BOOTX64.EFI' Success
-[Bds] Expand PciRoot(0x0)/Pci(0x1,0x1)/Ata(Primary,Master,0x0) -> PciRoot(0x0)/Pci(0x1,0x1)/Ata(Primary,Master,0x0)/\EFI\BOOT\BOOTX64.EFI
-[Security] 3rd party image[0] can be loaded after EndOfDxe: PciRoot(0x0)/Pci(0x1,0x1)/Ata(Primary,Master,0x0)/\EFI\BOOT\BOOTX64.EFI.
-InstallProtocolInterface: 5B1B31A1-9562-11D2-8E3F-00A0C969723B 3EB3B840
-Loading driver at 0x0003E46E000 EntryPoint=0x0003E46F776 Loader.efi
-... (略) ...
-```
-```
-Loading driver at 0x0003E46E000 EntryPoint=0x0003E46F776 Loader.efi
+Loading driver at 0x0003E416000 EntryPoint=0x0003E417CB9 Loader.efi
 ``` 
-以上の記述から、Loader.efiは `0x0003E46E000` にロードされていることがわかる。
 
-StOSLoaderPkg/Main.cに以下のコード追記し、`loaded_image->ImageBase`の値も確認する。
-```
-EFI_LOADED_IMAGE_PROTOCOL *loaded_image;
-EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs;
+上の記述では，`Loader.efi`が `0x0003E416000` にロードされていることがわかる。また下の図からも`0x0003E416000`がLoader.efiのベースアドレスとなっていることがわかる．
 
-gBS->OpenProtocol(
-   image_handle,
-   &gEfiLoadedImageProtocolGuid,
-   (VOID **)&loaded_image,
-   image_handle,
-   NULL,
-   EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+![Loader](./how_to_debug01.png)
 
-Print(L"UEFI Image Base :0x%0lx\n",loaded_image->ImageBase);
-```
-`0x0003E46F000`となっており、0x1000の差がある
-
-![qemu_day04a-01](https://user-images.githubusercontent.com/26945036/116802382-27977180-ab4d-11eb-820d-3962d10035f9.png)
-
-
+---
 ## PEバイナリの情報を確認
-次にgithubから`retrage/peinfo`を取得し、Loader.efiの情報を確認する。
-- [peinfo: Portable Executable Header Viewer](https://github.com/retrage/peinfo)
-
-ちなみにpeinfoはPEバイナリ向けのreadelfのようなもの。
-
+gdbのinfo fileコマンドを使って，Loader.efiの情報を取得する
 ```
-$ ./peinfo/peinfo edk2/Build/StOSLoaderX64/DEBUG_CLANG38/X64/Loader.efi
-Machine: 0x8664
-... (略) ...
-Name: .text
-VirtualSize: 0x00002280
-VirtualAddress: 0x00000240
-SizeOfRawData: 0x00002280
-PointerToRawData: 0x00000240
-... (略) ...
+$ gdb Loader.efi
+Reading symbols from Loader.efi...
+(No debugging symbols found in Loader.efi)
+(gdb) info file
+Symbols from "Loader.efi".
+Local exec file:
+	`Loader.efi', file type pei-x86-64.
+	Entry point: 0x1c3a
+	0x0000000000000240 - 0x0000000000002f00 is .text
+	0x0000000000002f00 - 0x00000000000030c0 is .data
+	0x00000000000030c0 - 0x0000000000003100 is .reloc
 ```
 
-## Loader.efiの.text領域の内容を確認.
+`.text`,`.data`,`.reloc`領域の物理アドレス計算結果を以下に示す．
+
+|領域     |仮想アドレス|物理アドレス|
+|---     |--:       |--:|
+|`.text `|`0x00240` |`0x0003E416240`|
+|`.data `|`0x02f00` |`0x0003E418f00`|
+|`.reloc`|`0x030c0` |`0x0003E4190c0`|
+
+実際に`objdump -D Loader.efi`による逆アセンブル結果とQEMUでの逆アセンブル結果を比較すると，
+
+### .text
 ```
 Loader.efi:     ファイル形式 pei-x86-64
-
 セクション .text の逆アセンブル:
 0000000000000240 <.text>:
      240:       48 83 ec 28             sub    $0x28,%rsp
@@ -104,12 +79,76 @@ Loader.efi:     ファイル形式 pei-x86-64
      248:       48 85 d2                test   %rdx,%rdx
      24b:       74 2b                   je     0x278
 ```
-QEMUのdebug.logでは、Loader.efiに `0x0003E46E000` ロードされていると出力されていたので、peinfoのVirtualAddress `0x240`を足した場所(`0x0003E46E240`) 
+```
+(qemu) x /4xi 0x003E416240
+0x3e416240:  48 83 ec 28              subq     $0x28, %rsp
+0x3e416244:  48 8b 57 08              movq     8(%rdi), %rdx
+0x3e416248:  48 85 d2                 testq    %rdx, %rdx
+0x3e41624b:  74 2b                    je       0x3e416278
+```
+---
+### .data
+```
+セクション .data の逆アセンブル:
+0000000000002f00 <.data>:
+    2f00:       68 1d 00 00 00          pushq  $0x1d
+    2f05:       00 00                   add    %al,(%rax)
+    2f07:       00 94 1d 00 00 00 00    add    %dl,0x0(%rbp,%rbx,1)
+    2f0e:       00 00                   add    %al,(%rax)
+```
+```
+(qemu) x /4xi 0x0003E418f00
+0x3e418f00:  68 7d 41 3e 00           pushq    $0x3e417d
+0x3e418f05:  00 00                    addb     %al, (%rax)
+0x3e418f07:  00 94 7d 41 3e 00 00     addb     %dl, 0x3e41(%rbp, %rdi, 2)
+0x3e418f0e:  00 00                    addb     %al, (%rax)
+```
+---
+### .reloc
+```
+セクション .reloc の逆アセンブル:
+00000000000030c0 <.reloc>:
+    30c0:       00 20                   add    %ah,(%rax)
+    30c2:       00 00                   add    %al,(%rax)
+    30c4:       40 00 00                add    %al,(%rax)
+    30c7:       00 00                   add    %al,(%rax)
+    30c9:       af                      scas   %es:(%rdi),%eax
+```
+```
+(qemu) x /5xi 0x0003E4190c0
+0x3e4190c0:  00 20                    addb     %ah, (%rax)
+0x3e4190c2:  00 00                    addb     %al, (%rax)
+0x3e4190c4:  40 00 00                 addb     %al, (%rax)
+0x3e4190c7:  00 00                    addb     %al, (%rax)
+0x3e4190c9:  af                       scasl    (%rdi), %eax
+```
+
+## DEBUG用のディスクイメージを作成する
+以下のツリー構成になるように，QEMU用のディスクイメージ`debug.img`を作成する.
 
 ```
-(qemu) x /4xi 0x0003E46E240
-0x3e46e240:  48 83 ec 28              subq     $0x28, %rsp
-0x3e46e244:  48 8b 57 08              movq     8(%rdi), %rdx
-0x3e46e248:  48 85 d2                 testq    %rdx, %rdx
-0x3e46e24b:  74 2b                    je       0x3e46e278
+debug.img
+├── Loader.efi
+└── startup.nsh
 ```
+
+startup.nshの内容は以下のとおり.
+```
+fs0:Loader.efi
+```
+
+## gdbscript
+```
+add-symbol-file ./Loader.debug 0x0003E416240 -s .data 0x0003E418F00
+```
+
+
+
+
+## 参考文献
+- [How-to-run-OVMF (tianocore)](https://github.com/tianocore/tianocore.github.io/wiki/How-to-run-OVMF)
+- [How to debug OVMF with QEMU using GDB (tianocore)](https://github.com/tianocore/tianocore.github.io/wiki/How-to-debug-OVMF-with-QEMU-using-GDB)
+- [Debugging_UEFI_applications_with_GDB (wiki.osdev.org)](https://wiki.osdev.org/Debugging_UEFI_applications_with_GDB)
+- [UEFI OVMF symbol load script for GDB (artem-nefedov/uefi-gdb)](https://github.com/artem-nefedov/uefi-gdb)
+- [QEMUで実行されているGRUB2 EFIイメージをデバッグする](https://tutorialmore.com/questions-2526193.htm)
+- [OVMFのデバッグ](https://retrage.github.io/2019/11/05/debugging-ovmf.html)
