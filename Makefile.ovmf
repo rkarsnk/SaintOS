@@ -1,0 +1,20 @@
+# Makefile for StOS
+SHELL=/bin/bash
+WORKDIR=$(CURDIR)
+EDK2_DIR=$(WORKDIR)/tools/edk2
+
+.PHONY: all
+all: $(OVMF_FILE)
+
+.PHONY: clean
+clean: 
+	rm -rf $(EDK2_DIR)/Build/OvmfX64
+
+
+#------------------------------------------------------------
+# build OVMF file
+#------------------------------------------------------------
+.PHONY: ovmf
+ovmf: edk2tool $(EDK2_DIR)/edksetup.sh
+	WORKSPACE=$(EDK2_DIR) source $(EDK2_DIR)/edksetup.sh --reconfig;\
+		WORKSPACE=$(EDK2_DIR) build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38

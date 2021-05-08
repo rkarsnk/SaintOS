@@ -10,8 +10,9 @@
 
 [Sources]
   Loader.c
-  LoaderInternal.h
   Include/FrameBufferConfig.hpp
+  Include/ElfBinaryInfo.hpp
+  Include/MemoryMap.h
 
 [Packages]
   MdePkg/MdePkg.dec

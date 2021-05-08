@@ -7,6 +7,7 @@ EDK2_DIR=$(WORKDIR)/tools/edk2
 OVMF_BASE=$(EDK2_DIR)/Build/OvmfX64/DEBUG_CLANG38
 OVMF_CODE=$(OVMF_BASE)/FV/OVMF_CODE.fd
 OVMF_VARS=$(OVMF_BASE)/FV/OVMF_VARS.fd
+OVMF_FILE=$(OVMF_BASE)/FV/OVMF.fd
 
 
 .PHONY: all
@@ -18,7 +19,7 @@ clean:
 	rm -rf kernel.elf
 	rm -rf $(EDK2_DIR)/LoaderPkg
 	rm -rf $(EDK2_DIR)/Build/LoaderX64
-	rm -rf disk.img
+	rm -rf disk.img debug.img
 	rm -rf debug.log
 	rm -rf Loader.*
 
@@ -46,11 +47,6 @@ Loader.efi: edk2tool $(EDK2_DIR)/edksetup.sh
 	cp ${EDK2_DIR}/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.efi ./Loader.efi
 	cp ${EDK2_DIR}/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.debug ./Loader.debug
 
-# build OVMF file
-ovmf: edk2tool $(EDK2_DIR)/edksetup.sh
-	WORKSPACE=$(EDK2_DIR) source $(EDK2_DIR)/edksetup.sh --reconfig;\
-		WORKSPACE=$(EDK2_DIR) build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38
-
 # build EDK2 C-lang tools
 .PHONY: edk2tool
 edk2tool: $(EDK2_DIR)/BaseTools/Source/C/Makefile
@@ -60,15 +56,12 @@ edk2tool: $(EDK2_DIR)/BaseTools/Source/C/Makefile
 #----------------------------------------------------------
 # QEMU
 #----------------------------------------------------------
-QEMU_IMG=disk.img
 QEMU_MOUNT=$(WORKDIR)/mnt
-QEMU_FAT=$(WORKDIR)/esp
-QEMU=qemu-system-x86_64
-QEMUFLAGS=-m 1G \
-	  -drive if=pflash,format=raw,readonly,file=$(OVMF_CODE) \
-	  -drive if=pflash,format=raw,file=$(OVMF_VARS) \
-	  -drive if=ide,index=0,media=disk,format=raw,file=$(QEMU_IMG) \
-	  -device nec-usb-xhci,id=xhci \
+QEMU=qemu-system-x86_64 -m 1G
+QEMU_UEFI=-drive if=pflash,format=raw,readonly,file=$(OVMF_CODE) \
+	-drive if=pflash,format=raw,file=$(OVMF_VARS) 
+QEMU_DISK=-drive if=ide,index=0,media=disk,format=raw,file
+QEMU_COMMON=-device nec-usb-xhci,id=xhci \
 	  -device usb-mouse -device usb-kbd \
 	  -debugcon file:debug.log -global isa-debugcon.iobase=0x402 \
 	  -monitor stdio 
@@ -76,10 +69,10 @@ QEMUFLAGS=-m 1G \
 # create disk.img
 disk.img: Loader.efi kernel.elf 
 	rm -rf $@
-	qemu-img create -f raw ${QEMU_IMG} 200M
-	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 ${QEMU_IMG}
+	qemu-img create -f raw $@ 200M
+	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $@
 	mkdir -p ${QEMU_MOUNT} 
-	sudo mount -o loop ${QEMU_IMG} ${QEMU_MOUNT}
+	sudo mount -o loop $@ ${QEMU_MOUNT}
 	sleep 0.5
 	sudo mkdir -p ${QEMU_MOUNT}/EFI/BOOT
 	sudo cp Loader.efi ${QEMU_MOUNT}/EFI/BOOT/BOOTX64.EFI
@@ -89,13 +82,29 @@ disk.img: Loader.efi kernel.elf
 	sleep 0.5
 	rmdir ${QEMU_MOUNT}
 
-# QEMU
-.PHONY: run debug
-run: disk.img ovmf	
-	sudo $(QEMU) $(QEMUFLAGS) -s
-debug: disk.img ovmf
-	sudo $(QEMU) $(QEMUFLAGS) -s -S
+debug.img: Loader.efi kernel.elf 
+	rm -rf $@
+	qemu-img create -f raw $@ 200M
+	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $@
+	mkdir -p ${QEMU_MOUNT} 
+	sudo mount -o loop $@ ${QEMU_MOUNT}
+	sleep 0.5
+	sudo mkdir -p ${QEMU_MOUNT}/EFI/BOOT
+	sudo cp Loader.efi kernel.elf esp/startup.nsh ${QEMU_MOUNT}/
+	sleep 0.5
+	sudo umount ${QEMU_MOUNT}
+	sleep 0.5
+	rmdir ${QEMU_MOUNT}
 
+.PHONY: run debug
+run: disk.img	
+	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
+debug: debug.img
+	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
+
+.PHONY: ovmf
+ovmf: Makefile.ovmf
+	make -f Makefile.ovmf
 
 .PHONY: prep
 prep: Makefile

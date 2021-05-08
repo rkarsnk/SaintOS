@@ -1,4 +1,5 @@
 disk.img
+debug.img
 kernel.elf
 Loader.efi
 Loader.debug
