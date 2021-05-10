@@ -103,8 +103,9 @@ debug: debug.img
 	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
 
 .PHONY: ovmf
-ovmf: Makefile.ovmf
-	make -f Makefile.ovmf
+ovmf: edk2tool $(EDK2_DIR)/edksetup.sh
+	WORKSPACE=$(EDK2_DIR) source $(EDK2_DIR)/edksetup.sh --reconfig;\
+		WORKSPACE=$(EDK2_DIR) build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38	make -f Makefile.ovmf
 
 .PHONY: prep
 prep: Makefile

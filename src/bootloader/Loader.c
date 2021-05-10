@@ -27,6 +27,40 @@
 // FrameBuffer Color white
 #define FRAME_BUFFER_COLOR 255
 
+#define INFO 0
+#define ERROR 1
+
+void Stall(){
+  // 0.5秒処理を遅らせる
+  gBS->Stall(500000);
+}
+
+/* 実装途中
+void PrintMessage(UINTN level, const CHAR16* Format){
+  switch (level){
+  case INFO:
+    Print(L"[");
+    gST->ConOut->SetAttribute(gST->ConOut, EFI_LIGHTGREEN);
+    Print(L"INFO");
+    gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
+    Print(L"] ");
+    Print(Format);
+    Stall();
+    break;
+  
+  case ERROR:
+    Print(L"[");
+    gST->ConOut->SetAttribute(gST->ConOut, EFI_LIGHTRED);
+    Print(L"ERROR");
+    gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
+    Print(L"] ");
+    Print(Format);
+    Stall();
+    break;
+  }
+}
+*/
+
 /* GetMemoryMap */
 EFI_STATUS GetMemoryMap(struct MemoryMap *map){
   if (map->buffer == NULL){
@@ -200,7 +234,10 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   EFI_STATUS status;
 
   /* コンソールのクリーン */
-  system_table->ConOut->ClearScreen(system_table->ConOut);
+  gST->ConOut->ClearScreen(gST->ConOut);
+  gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
+
+
   /* ASCIIロゴの表示 */
   Print(L"_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/");
   Print(L"                    / ____|      _       _   / __ \\ / ____| \n");
@@ -212,6 +249,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   Print(L"                                      Copyleft 2021 rkarsnk.jp\n");
   Print(L"_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/");
 
+  Stall();
+  
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buffer), memmap_buffer, 0, 0, 0, 0};
@@ -220,6 +259,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to get memory map: %r\n", status);
     Halt();
   }
+
+  Stall();
 
   /* メモリマップのファイルへの書き出し */
   EFI_FILE_PROTOCOL* root_dir;
@@ -250,6 +291,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
       Halt();
     }
   }
+
+  Stall();
 
   /*フレームバッファ初期化*/
   EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
@@ -288,6 +331,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
       Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
       Halt();
   }
+
+  Stall();
 
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_elf;
@@ -334,6 +379,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Halt();
   }
 
+  Stall();
+
   /*--------------------------------------------------------
   3.kernel_bufferに配置されたkernel.elfファイルのファイルヘッダ
   　からkernelの先頭アドレスと末尾アドレスを取得する.
@@ -341,6 +388,8 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   Elf64_ElfHeader* kernel_ehdr = (Elf64_ElfHeader*)kernel_buffer;
   UINT64 kernel_head_addr, kernel_tail_addr;
   CalcLoadAddressRange(kernel_ehdr, &kernel_head_addr, &kernel_tail_addr);
+
+  Stall();
 
   /*-------------------------------------------------------------
   4.kernelの最終配置場所のメモリ領域を必要ページ数分だけ確保する
@@ -358,6 +407,9 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to allocate pages: %r\n", status);
     Halt();
   }
+
+  Stall();
+
   /*--------------------------------------------------------
   5.一時領域から最終配置場所にカーネルのロードセグメントを書き出す．
   --------------------------------------------------------*/
@@ -373,8 +425,12 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"[ERROR] failed to free pool:%r\n",status);
   }
 
+  Stall();
+
   UINT64 entry_addr = *(UINT64*)(kernel_head_addr + ENTRY_POINT_OFFSET);
   Print(L"[INFO] Kernel entry_address: 0x%0lx \n", entry_addr);
+
+  Stall();
 
   /* EFI BootServiceの終了 */
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
