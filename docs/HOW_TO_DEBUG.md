@@ -132,18 +132,35 @@ debug.img
 └── startup.nsh
 ```
 
-startup.nshの内容は以下のとおり.
+`startup.nsh`の内容は以下のとおり.
 ```
 fs0:Loader.efi
 ```
+このスクリプトによってEFI Shellのタイムアウト後，startup.nshが自動的に読み込まれ，Loader.efiが起動する．
 
-## gdbscript
+## gdbscriptの作成．
+`Loader.debug`と同じフォルダに`gdbscript`を作成する．
 ```
 add-symbol-file ./Loader.debug 0x0003E416240 -s .data 0x0003E418F00
 ```
+作成したgdbscriptは，gdbのsourceコマンドを利用して読み込む．
+```
+(gdb) source ./gdbscript
+```
+## いざGDBでデバッグ
+|GDB側での操作|QEMU側での操作|
+|---|---|
+|`$ gdb Loader.efi`|-|
+|`(gdb) source ./gdbscript`|-|
+|-|QEMUを起動し，EFI Shellの起動を待つ|
+|`(gdb) target remote :1234` |GDBとの接続が確立するとPAUSE状態になる|
+|ブレイクポイントを設定する|-|
+|`(gdb) c` で動作を再開する|QEMUのPAUSEが解除される|
+|ブレイクポイントで動作が止まる|QEMUがPAUSE状態になる|
+|`(gdb) p value`で変数内容の確認|
+|`(gdb) n or s` でステップ実行で動作確認|ステップ実行ごとに処理が行われる|
 
-
-
+- `(gdb) target remote :1234` は，startup.nshが呼び出される前に実行する．
 
 ## 参考文献
 - [How-to-run-OVMF (tianocore)](https://github.com/tianocore/tianocore.github.io/wiki/How-to-run-OVMF)
