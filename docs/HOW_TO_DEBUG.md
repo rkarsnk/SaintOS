@@ -1,4 +1,4 @@
-# GDBでEFIアプリケーションデバッグする
+# GDBでEFIアプリケーションをデバッグする
 ## DEBUG準備
 UEFIモードで起動したQEMUで、debug.logを出力できるようにする。\
 DEBUGに対応したOVMFが必要であるため、EDK2からビルドする。
