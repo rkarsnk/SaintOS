@@ -31,8 +31,8 @@
 #define ERROR 1
 
 void Stall(){
-  // 0.5秒処理を遅らせる
-  gBS->Stall(500000);
+  // 0.1秒処理を遅らせる
+  gBS->Stall(100000);
 }
 
 /* 実装途中
@@ -66,7 +66,6 @@ EFI_STATUS GetMemoryMap(struct MemoryMap *map){
   if (map->buffer == NULL){
     return EFI_BUFFER_TOO_SMALL;
   }
-
   map->map_size = map->buffer_size;
   return gBS->GetMemoryMap(
       &map->map_size,
@@ -103,20 +102,19 @@ EFI_STATUS SaveMemoryMap( struct MemoryMap *map,
                           EFI_FILE_PROTOCOL *file){
   CHAR8 buf[256];
   UINTN len;
-
   CHAR8 *header = "Index, Type, Type(name), PhysicalStart, NumberOfPages, Attribute\n";
+
   len = AsciiStrLen(header);
+
   //ヘッダをファイルの先頭に書き出す
   file->Write(file, &len, header);
-
   Print(L"[INFO] map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
 
   EFI_PHYSICAL_ADDRESS iter;
   int idx;
   for (iter = (EFI_PHYSICAL_ADDRESS)map->buffer, idx = 0;
        iter < (EFI_PHYSICAL_ADDRESS)map->buffer + map->map_size;
-       iter += map->descriptor_size, idx++)
-  {
+       iter += map->descriptor_size, idx++){
     EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
     len = AsciiSPrint(
         buf, sizeof(buf),
@@ -222,11 +220,36 @@ void CopyLoadSegments(Elf64_ElfHeader* ehdr){
 }
 
 
-
 /* Halt function */
 void Halt(void) {
   while (1) __asm__("hlt");
 }
+
+/*----------------------------------------------
+ キー入力があるまで待ち、キー入力があれば返す関数
+ ※https://github.com/No000/WcatOS の実装を参考
+-----------------------------------------------*/
+EFI_STATUS WaitForPressAnyKey(){
+  EFI_STATUS status;
+
+  Print(L"Press any key to continue:\n");
+
+  status = gBS->WaitForEvent(1, &(gST->ConIn->WaitForKey), 0);
+  if(EFI_ERROR(status)){
+    Print(L"[ERROR] WaitForEvent error: %r\n",status);
+    Halt();
+  }
+
+  EFI_INPUT_KEY key;
+  status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
+  if (EFI_ERROR(status)) {
+    Print(L"[ERROR] ReadKeyStroke error: %r\n",status);
+    Halt();
+  }
+
+  return  status;
+}
+
 
 /* UefiMain */
 EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
@@ -249,8 +272,13 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   Print(L"                                      Copyleft 2021 rkarsnk.jp\n");
   Print(L"_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/");
 
+  status = WaitForPressAnyKey();  
+  if (EFI_ERROR(status)) {
+    Print(L"[ERROR] WaitForPressAnyKey error: %r\n", status);
+    Halt();
+  }
   Stall();
-  
+
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buffer), memmap_buffer, 0, 0, 0, 0};
@@ -269,6 +297,7 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to open root directory: %r\n", status);
     Halt();
   }
+  Stall();
 
   EFI_FILE_PROTOCOL *memmap_file;
   status = root_dir->Open(  root_dir, 
@@ -301,17 +330,25 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to open GOP: %r\n", status);
     Halt();
   }
+  Stall();
 
   Print(L"[INFO] FrameBuffer Resolution: %u * %u\n",
       gop->Mode->Info->HorizontalResolution,
       gop->Mode->Info->VerticalResolution);
+  Stall();
+
   Print(L"[INFO] Pixel Format: %s, %u pixels/line\n",
       GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
       gop->Mode->Info->PixelsPerScanLine);
+  Stall();
+
   Print(L"[INFO] Frame Buffer: 0x%0lx - 0x%0lx\n",
       gop->Mode->FrameBufferBase,
       gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize);
+  Stall();
+
   Print(L"[INFO] Frame Buffer Size: %lu bytes\n", gop->Mode->FrameBufferSize);
+  Stall();
 
   struct FrameBufferConfig config = {
     (UINT8*)gop->Mode->FrameBufferBase,
@@ -320,6 +357,7 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     gop->Mode->Info->VerticalResolution,
     0 
   };
+
   switch (gop->Mode->Info->PixelFormat) {
     case PixelRedGreenBlueReserved8BitPerColor:
       config.pixel_format = kPixelRGBResv8BitPerColor;
@@ -332,8 +370,6 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
       Halt();
   }
 
-  Stall();
-
   /* kernel.elfの読み込み */
   EFI_FILE_PROTOCOL* kernel_elf;
   // EFIファイルシステムをOpenし、kernel.elfを読み出す
@@ -344,6 +380,7 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to open file '\\kernel.elf': %r\n", status);
     Halt();
   }
+  Stall();
 
   // file_info_size はEFI_FILE_INFOのサイズ＋ファイル名長(ヌル文字含む)
   UINTN file_info_size = sizeof(EFI_FILE_INFO) + sizeof(CHAR16) * LEN_OF_KERNFILENAME;
@@ -359,6 +396,7 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to get file information: %r\n", status);
     Halt();
   }
+  Stall();
 
   /*--------------------------------------------------------
   1.kernel_bufferに一時的なカーネルロード領域を確保
@@ -373,13 +411,12 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"[ERROR] failed to allocate pool:%r \n", status);
     Halt();
   }
+
   status = kernel_elf->Read(kernel_elf, &kernel_elf_size, kernel_buffer);
   if(EFI_ERROR(status)) {
    Print(L"[ERROR] failed to read kernel file:%r \n", status);
     Halt();
   }
-
-  Stall();
 
   /*--------------------------------------------------------
   3.kernel_bufferに配置されたkernel.elfファイルのファイルヘッダ
@@ -388,8 +425,6 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   Elf64_ElfHeader* kernel_ehdr = (Elf64_ElfHeader*)kernel_buffer;
   UINT64 kernel_head_addr, kernel_tail_addr;
   CalcLoadAddressRange(kernel_ehdr, &kernel_head_addr, &kernel_tail_addr);
-
-  Stall();
 
   /*-------------------------------------------------------------
   4.kernelの最終配置場所のメモリ領域を必要ページ数分だけ確保する
@@ -407,7 +442,6 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
     Print(L"failed to allocate pages: %r\n", status);
     Halt();
   }
-
   Stall();
 
   /*--------------------------------------------------------
@@ -416,6 +450,7 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   CopyLoadSegments(kernel_ehdr);
   Print(L"[INFO] Kernel: 0x%0lx - 0x%0lx\n", kernel_head_addr, kernel_tail_addr);
   Print(L"[INFO] Kernel size :%lu bytes)\n", kernel_elf_size);
+  Stall();
 
   /*--------------------------------------------------------
   5.不要な一時領域を開放する．
@@ -424,13 +459,10 @@ EFI_STATUS EFIAPI UefiMain( EFI_HANDLE image_handle,
   if(EFI_ERROR(status)) {
     Print(L"[ERROR] failed to free pool:%r\n",status);
   }
-
   Stall();
 
   UINT64 entry_addr = *(UINT64*)(kernel_head_addr + ENTRY_POINT_OFFSET);
   Print(L"[INFO] Kernel entry_address: 0x%0lx \n", entry_addr);
-
-  Stall();
 
   /* EFI BootServiceの終了 */
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
