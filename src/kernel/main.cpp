@@ -22,7 +22,8 @@ void operator delete(void* obj) noexcept{
 }
 
 /**
- * グローバル変数 .bssセクションに配置される
+ * グローバル変数 
+ * .bssセクションに配置される
  */
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
 PixelWriter* pixel_writer;
