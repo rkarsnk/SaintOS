@@ -8,78 +8,8 @@
 #include <cstddef>
 
 #include <FrameBufferConfig.hpp>
-
-// PixelColor 構造体
-struct PixelColor {
-    uint8_t r, g, b;
-};
-
-/**
- * PixelWriterクラス 
- * 
- * 
- */
-class PixelWriter {
-    private:
-        /**
-         * config_
-         * フレームバッファ構成情報を受け取るメンバ変数
-         */
-        const FrameBufferConfig& config_;
-
-    public:
-        /**
-         * PixelWrite()
-         * コンストラクタ（インスタンスをメモリ上に構築する）
-         * 引数で受け取ったフレームバッファ構成情報をメンバ変数のconfig_にコピーする 
-         */
-        PixelWriter(const FrameBufferConfig& config) : config_{config} {
-        }
-        /**
-         * ~PixelWrite()
-         * デストラクタ （インスタンスをメモリ上から破棄する）
-         */
-        virtual ~PixelWriter() = default;
-        /**
-         * Write
-         * x, y で指定されたPixel座標の色をcolorで指定された色にする
-         */
-        virtual void Write(int x, int y, const PixelColor& color) = 0;
-
-    protected:
-        /**
-         * PixelAt
-         * 座標(x, y)から操作するフレームバッファのPixelのメモリアドレスを取得する
-         */
-        uint8_t* PixelAt(int x, int y){
-            return config_.frame_buffer + 4 * (config_.pixels_per_scan_line * y + x);
-        }
-};
-
-class RGBResv8BitPerColorPixelWriter : public PixelWriter {
-    public:
-        using PixelWriter::PixelWriter;
-
-    virtual void Write(int x , int y, const PixelColor& color){
-        auto p = PixelAt(x, y);
-        p[0] = color.r;
-        p[1] = color.g;
-        p[2] = color.b;
-    }
-};
-
-class BGRResv8BitPerColorPixelWriter : public PixelWriter {
-    public:
-        using PixelWriter::PixelWriter;
-
-    virtual void Write(int x , int y, const PixelColor& color){
-        auto p = PixelAt(x, y);
-        p[0] = color.b;
-        p[1] = color.g;
-        p[2] = color.r;
-    }
-};
-
+#include <graphics.hpp>
+#include <font.hpp>
 
 /**
  * Placement new
@@ -110,13 +40,16 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
 
     for(int x = 0; x < frame_buffer_config.horizontal_resolution; ++x) {
         for (int y = 0; y < frame_buffer_config.vertical_resolution; ++y) {
-            pixel_writer->Write(x, y, {0, 0, 0});
+            pixel_writer->Write(x, y, {0xE6, 0xE6, 0xE6});
         }
     }
     for(int x = 0; x < 200; ++x) {
         for(int y = 0; y < 100 ; ++y ){
-            pixel_writer->Write(x, y, {200,200,200});
+            pixel_writer->Write(x, y, {0x99,0xFF,0xFF});
         }
     }
+
+    WriteAscii(*pixel_writer, 50,50,'A',{0,0,0});
+    WriteAscii(*pixel_writer, 58,50,'A',{0,0,0});
     while (1) __asm__("hlt");
 }

@@ -6,3 +6,4 @@ Loader.debug
 debug.log
 tools/edk2
 tools/peinfo
+gdbscript
