@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdio>
 
 #include <FrameBufferConfig.hpp>
 #include <graphics.hpp>
@@ -44,13 +45,24 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
             pixel_writer->Write(x, y, {0xE6, 0xE6, 0xE6});
         }
     }
+    /*---------------------------------------------------
     for(int x = 0; x < 200; ++x) {
         for(int y = 0; y < 100 ; ++y ){
             pixel_writer->Write(x, y, {0x99,0xFF,0xFF});
         }
     }
+    ----------------------------------------------------*/
+    WriteString(*pixel_writer,1,0,"Hello, SaintOS's world!", {0xFF,0x00,0x00});
 
-    WriteAscii(*pixel_writer, 50,50,'A',{0,0,0});
-    WriteAscii(*pixel_writer, 58,50,'A',{0,0,0});
+    int i;
+    char c;
+    for (i = 0, c ='!';c <= '~'; ++c, ++i){
+        WriteAscii(*pixel_writer, 8 * i, 50, c, {0x00,0x00,0x00});
+    }
+
+    char buf[128];
+    sprintf(buf, "1 + 2 = %d", 1 + 2 );
+    WriteString(*pixel_writer, 0, 16, buf, {0x00, 0x00, 0x00});
+
     while (1) __asm__("hlt");
 }

@@ -1,10 +1,14 @@
 TARGET = kernel.elf
-OBJS = main.o graphics.o font.o
+OBJS = main.o graphics.o font.o hankaku.o newlib_support.o
+DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
+
 WORKDIR=../..
 LIBC_DIR=$(WORKDIR)/tools/x86_64-elf
 EDK2_DIR=$(WORKDIR)/tools/edk2
+MKFONT_CMD=$(WORKDIR)/tools/mkfont/makefont.py
 SOURCE_DIR=${WORKDIR}/src
 
+CFLAGS   += -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone
 CPPFLAGS += -I$(LIBC_DIR)/include/c++/v1 -I$(LIBC_DIR)/include -I$(LIBC_DIR)/include/freetype2 \
             -I$(EDK2_DIR)/MdePkg/Include -I$(EDK2_DIR)/MdePkg/Include/X64 \
 			-I$(SOURCE_DIR)/bootloader/Include \
@@ -21,10 +25,10 @@ all: $(TARGET)
 
 .PHONY: clean
 clean:
-	rm -rf *.o kernel.elf
+	rm -rf *.o kernel.elf .*.d *.bin
 
 kernel.elf: $(OBJS) Makefile
-	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS)
+	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS) -lc
 
 %.o: %.cpp Makefile
 	clang++ $(CPPFLAGS) $(CXXFLAGS) -c $< 
@@ -33,6 +37,23 @@ kernel.elf: $(OBJS) Makefile
 	clang++ $(CPPFLAGS) $(CXXFLAGS) -MM $< > $@
 	$(eval OBJ = $(<:.cpp=.o))
 	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+
+%.o: %.c Makefile
+	clang $(CPPFLAGS) $(CFLAGS) -c $<
+
+%.o: %.c
+	clang $(CPPFLAGS) $(CFLAGS) -MM $< > $@
+	$(eval OBJ = $(<:.c=.o))
+	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+
+hankaku.bin: font/hankaku.txt
+	$(MKFONT_CMD) -o $@ $<
+
+hankaku.o: hankaku.bin
+	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 $< $@
+
+.%.d: %.bin
+	touch $@
 
 .PHONY: depends
 depends:
