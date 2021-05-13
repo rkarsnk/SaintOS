@@ -354,7 +354,8 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   }
 
   /* 解像度をSXGAに変更する */
-  status = gop->SetMode(gop, mode_XGA);
+   //この実装は機種によっては利用出来ない場合がある
+  status = gop->SetMode(gop, mode_SVGA); 
   if (EFI_ERROR(status))
   {
     Print(L"failed to change resolution: %r\n", status);

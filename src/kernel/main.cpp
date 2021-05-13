@@ -11,6 +11,7 @@
 #include <FrameBufferConfig.hpp>
 #include <graphics.hpp>
 #include <font.hpp>
+#include <console.hpp>
 
 /**
  * Placement new
@@ -29,6 +30,23 @@ void operator delete(void* obj) noexcept{
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
 PixelWriter* pixel_writer;
 
+char console_buf[sizeof(Console)];
+Console* console;
+
+int printk(const char* format, ...){
+    va_list ap;
+    int result;
+    char s[1024];
+
+    va_start(ap, format);
+    result = vsprintf(s, format, ap);
+    va_end(ap);
+
+    console->PutString(s);
+    return result;
+}
+
+
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
     switch (frame_buffer_config.pixel_format)
     {
@@ -45,24 +63,12 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config){
             pixel_writer->Write(x, y, {0xE6, 0xE6, 0xE6});
         }
     }
-    /*---------------------------------------------------
-    for(int x = 0; x < 200; ++x) {
-        for(int y = 0; y < 100 ; ++y ){
-            pixel_writer->Write(x, y, {0x99,0xFF,0xFF});
-        }
-    }
-    ----------------------------------------------------*/
-    WriteString(*pixel_writer,1,0,"Hello, SaintOS's world!", {0xFF,0x00,0x00});
 
-    int i;
-    char c;
-    for (i = 0, c ='!';c <= '~'; ++c, ++i){
-        WriteAscii(*pixel_writer, 8 * i, 50, c, {0x00,0x00,0x00});
-    }
+    console = new(console_buf) Console(*pixel_writer, {0x00, 0x00, 0x00}, {0xE6, 0xE6, 0xE6});
 
-    char buf[128];
-    sprintf(buf, "1 + 2 = %d", 1 + 2 );
-    WriteString(*pixel_writer, 0, 16, buf, {0x00, 0x00, 0x00});
+    for(int i = 0 ; i < 27 ; ++i ){
+        printk("printk: %d\n",i);
+    }
 
     while (1) __asm__("hlt");
 }
