@@ -1,9 +1,7 @@
-#ifndef __UEFI_H_
-#define __UEFI_H_
+#pragma once
 
 #include <Uefi.h>
 
-#endif
 /* MemoryMap structure */
 struct MemoryMap{
   UINTN buffer_size;
