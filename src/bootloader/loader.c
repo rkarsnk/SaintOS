@@ -12,9 +12,8 @@
 #include <Protocol/BlockIo.h>
 #include <Guid/FileInfo.h>
 
-#include "Include/FrameBufferConfig.hpp"
-#include "Include/ElfBinaryInfo.hpp"
-#include "Include/MemoryMap.h"
+#include "loader_internal.h"
+
 
 // \kernel.elf を含む12文字
 #define LEN_OF_KERNFILENAME 12
@@ -71,94 +70,6 @@ void PrintMessage(UINTN level, const CHAR16* Format){
 }
 */
 
-/* GetMemoryMap */
-EFI_STATUS GetMemoryMap(struct MemoryMap *map)
-{
-  if (map->buffer == NULL)
-  {
-    return EFI_BUFFER_TOO_SMALL;
-  }
-  map->map_size = map->buffer_size;
-  return gBS->GetMemoryMap(
-      &map->map_size,
-      (EFI_MEMORY_DESCRIPTOR *)map->buffer,
-      &map->map_key,
-      &map->descriptor_size,
-      &map->descriptor_version);
-}
-
-const CHAR16 *GetMemoryTypeUnicode(EFI_MEMORY_TYPE type)
-{
-  switch (type)
-  {
-  case EfiReservedMemoryType:
-    return L"EfiReservedMemoryType";
-  case EfiLoaderCode:
-    return L"EfiLoaderCode";
-  case EfiLoaderData:
-    return L"EfiLoaderData";
-  case EfiBootServicesCode:
-    return L"EfiBootServicesCode";
-  case EfiBootServicesData:
-    return L"EfiBootServicesData";
-  case EfiRuntimeServicesCode:
-    return L"EfiRuntimeServicesCode";
-  case EfiRuntimeServicesData:
-    return L"EfiRuntimeServicesData";
-  case EfiConventionalMemory:
-    return L"EfiConventionalMemory";
-  case EfiUnusableMemory:
-    return L"EfiUnusableMemory";
-  case EfiACPIReclaimMemory:
-    return L"EfiACPIReclaimMemory";
-  case EfiACPIMemoryNVS:
-    return L"EfiACPIMemoryNVS";
-  case EfiMemoryMappedIO:
-    return L"EfiMemoryMappedIO";
-  case EfiMemoryMappedIOPortSpace:
-    return L"EfiMemoryMappedIOPortSpace";
-  case EfiPalCode:
-    return L"EfiPalCode";
-  case EfiPersistentMemory:
-    return L"EfiPersistentMemory";
-  case EfiMaxMemoryType:
-    return L"EfiMaxMemoryType";
-  default:
-    return L"InvalidMemoryType";
-  }
-}
-
-/* SaveMemoryMap */
-EFI_STATUS SaveMemoryMap(struct MemoryMap *map,
-                         EFI_FILE_PROTOCOL *file)
-{
-  CHAR8 buf[256];
-  UINTN len;
-  CHAR8 *header = "Index, Type, Type(name), PhysicalStart, NumberOfPages, Attribute\n";
-
-  len = AsciiStrLen(header);
-
-  //ヘッダをファイルの先頭に書き出す
-  file->Write(file, &len, header);
-  Print(L"[INFO] map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
-
-  EFI_PHYSICAL_ADDRESS iter;
-  int idx;
-  for (iter = (EFI_PHYSICAL_ADDRESS)map->buffer, idx = 0;
-       iter < (EFI_PHYSICAL_ADDRESS)map->buffer + map->map_size;
-       iter += map->descriptor_size, idx++)
-  {
-    EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
-    len = AsciiSPrint(
-        buf, sizeof(buf),
-        "%u, %x, %-ls, %08lx, %lx, %lx\n",
-        idx, desc->Type, GetMemoryTypeUnicode(desc->Type), desc->PhysicalStart,
-        desc->NumberOfPages, desc->Attribute & 0xffffflu);
-    file->Write(file, &len, buf);
-  }
-
-  return EFI_SUCCESS;
-}
 
 /* OpenRootDir */
 EFI_STATUS OpenRootDir(EFI_HANDLE image_handle,
@@ -190,51 +101,6 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle,
   return EFI_SUCCESS;
 }
 
-/* OpenGOP GOP:Graphics Output Protocol */
-EFI_STATUS OpenGOP(EFI_HANDLE image_handle,
-                   EFI_GRAPHICS_OUTPUT_PROTOCOL **gop)
-{
-  UINTN num_gop_handles = 0;
-  EFI_HANDLE *gop_handles = NULL;
-  gBS->LocateHandleBuffer(
-      ByProtocol,
-      &gEfiGraphicsOutputProtocolGuid,
-      NULL,
-      &num_gop_handles,
-      &gop_handles);
-
-  gBS->OpenProtocol(
-      gop_handles[0],
-      &gEfiGraphicsOutputProtocolGuid,
-      (VOID **)gop,
-      image_handle,
-      NULL,
-      EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
-
-  FreePool(gop_handles);
-
-  return EFI_SUCCESS;
-}
-
-/* GetPixelFormatUnicode */
-const CHAR16 *GetPixelFormatUnicode(EFI_GRAPHICS_PIXEL_FORMAT fmt)
-{
-  switch (fmt)
-  {
-  case PixelRedGreenBlueReserved8BitPerColor:
-    return L"PixelRedGreenBlueReserved8BitPerColor";
-  case PixelBlueGreenRedReserved8BitPerColor:
-    return L"PixelBlueGreenRedReserved8BitPerColor";
-  case PixelBitMask:
-    return L"PixelBitMask";
-  case PixelBltOnly:
-    return L"PixelBltOnly";
-  case PixelFormatMax:
-    return L"PixelFormatMax";
-  default:
-    return L"InvalidPixelFormat";
-  }
-}
 
 /* CalcLoadAddressRange */
 void CalcLoadAddressRange(Elf64_ElfHeader *ehdr, UINT64 *head, UINT64 *tail)
@@ -299,29 +165,9 @@ EFI_STATUS WaitForPressAnyKey()
     Print(L"[ERROR] ReadKeyStroke error: %r\n", status);
     Halt();
   }
-
   return EFI_SUCCESS;
 }
 
-EFI_STATUS SaveGopModeList(EFI_GRAPHICS_OUTPUT_PROTOCOL *gop, EFI_FILE_PROTOCOL *file)
-{
-  CHAR8 buf[256];
-  UINTN len;
-  EFI_STATUS status;
-
-  UINTN InfoSize;
-  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
-  for (int mode = 0; mode < gop->Mode->MaxMode; ++mode)
-  {
-    status = gop->QueryMode(gop, mode, &InfoSize, &Info);
-    len = AsciiSPrint(buf, sizeof(buf), "%u, %u * %u\n",
-                      mode,
-                      Info->HorizontalResolution,
-                      Info->VerticalResolution);
-    file->Write(file, &len, buf);
-  }
-  return EFI_SUCCESS;
-}
 
 void PrintLogo(void)
 {
