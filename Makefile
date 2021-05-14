@@ -13,15 +13,19 @@ OVMF_FILE=$(OVMF_BASE)/FV/OVMF.fd
 .PHONY: all
 all: Loader.efi kernel.elf
 
-.PHONY: clean
-clean: 
-	make -C ${SOURCE_DIR}/kernel clean WORKDIR=${WORKDIR}
-	rm -rf kernel.elf
-	rm -rf $(EDK2_DIR)/LoaderPkg
-	rm -rf $(EDK2_DIR)/Build/LoaderX64
+.PHONY: clean clean_kernel clean_loader
+clean: clean_kernel clean_loader
 	rm -rf disk.img debug.img
 	rm -rf debug.log
+
+clean_kernel:
+	rm -rf kernel.elf
+	make -C ${SOURCE_DIR}/kernel clean WORKDIR=${WORKDIR}
+
+clean_loader:
 	rm -rf Loader.*
+	rm -rf $(EDK2_DIR)/LoaderPkg
+	rm -rf $(EDK2_DIR)/Build/LoaderX64
 
 
 # build kernel.elf

@@ -26,57 +26,30 @@ dx=2: 0b00000100 & 0b10000000 = 0b00000000 (0x00u ==0)　塗らない
 ### Makefileの変更点に関するメモ
 分割コンパイルに伴い，`.%.d: %.cpp`以下の変更が加えられている．
 ```
++DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
+
 kernel.elf: $(OBJS) Makefile
 	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS)
 
 %.o: %.cpp Makefile
 	clang++ $(CPPFLAGS) $(CXXFLAGS) -c $< 
 
-.%.d: %.cpp
-	clang++ $(CPPFLAGS) $(CXXFLAGS) -MM $< > $@
-	$(eval OBJ = $(<:.cpp=.o))
-	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
-
-.PHONY: depends
-depends:
-	$(MAKE) $(DEPENDS)
-
--include $(DEPENDS)
-```
-何やってるのか調べるために，`make -n`でドライラン．
-
-```
-$ make -n
-clang++ -I../../tools/x86_64-elf/include/c++/v1 \
-        -I../../tools/x86_64-elf/include \
-        -I../../tools/x86_64-elf/include/freetype2 \
-        -I../../tools/edk2/MdePkg/Include \
-        -I../../tools/edk2/MdePkg/Include/X64 \
-        -I../../src/bootloader/Include \
-        -I../../src/kernel/Include \
-        -nostdlibinc  -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS -DEFIAPI='__attribute__((ms_abi))' -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti -std=c++17 \
-        -c main.cpp 
-clang++ -I../../tools/x86_64-elf/include/c++/v1 \
-        -I../../tools/x86_64-elf/include \
-        -I../../tools/x86_64-elf/include/freetype2 \
-        -I../../tools/edk2/MdePkg/Include \
-        -I../../tools/edk2/MdePkg/Include/X64 \
-        -I../../src/bootloader/Include \
-        -I../../src/kernel/Include \
-        -nostdlibinc  -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS -DEFIAPI='__attribute__((ms_abi))' -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti -std=c++17 \
-        -c graphics.cpp 
-clang++ -I../../tools/x86_64-elf/include/c++/v1 \
-        -I../../tools/x86_64-elf/include \
-        -I../../tools/x86_64-elf/include/freetype2 \
-        -I../../tools/edk2/MdePkg/Include \
-        -I../../tools/edk2/MdePkg/Include/X64 \
-        -I../../src/bootloader/Include \
-        -I../../src/kernel/Include \
-        -nostdlibinc  -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS -DEFIAPI='__attribute__((ms_abi))' -O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti -std=c++17 \
-        -c font.cpp 
-
-ld.lld -L../../tools/x86_64-elf/lib --entry KernelMain -z norelro -z separate-code --image-base 0x100000 \
---static -o kernel.elf main.o graphics.o font.o
++.%.d: %.cpp
++	clang++ $(CPPFLAGS) $(CXXFLAGS) -MM $< > $@
++	$(eval OBJ = $(<:.cpp=.o))
++	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
++
++.PHONY: depends
++depends:
++	$(MAKE) $(DEPENDS)
++
++-include $(DEPENDS)
 ```
 
-この結果だけ見ると，追加部分は通ってない．
+この追加部分は，各`*.o`ファイルが利用するIncludeパスの情報を`.*.d`ファイルに出力する処理を行っている．
+
+## osbook_day05e
+ここでは，`fg_color_`,`cursor_row_`,`buffer_`など末尾に`_`がつく変数が宣言されている．\
+末尾に`_`をつける理由はなんだろう．
+
+private変数であることを明示するため．
