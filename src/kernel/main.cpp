@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <cstdio>
 
-#include <FrameBufferConfig.hpp>
+#include <frame_buffer_config.h>
 #include <graphics.hpp>
 #include <font.hpp>
 #include <console.hpp>

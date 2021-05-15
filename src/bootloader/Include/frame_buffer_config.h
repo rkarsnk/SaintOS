@@ -4,9 +4,6 @@
 -------------------------------------------------------------- */
 #pragma once
 
-#ifndef __FBC_H__
-#define __FBC_H__
-
 #include <stdint.h>
 
 enum PixelFormat{
@@ -21,5 +18,3 @@ struct FrameBufferConfig {
     uint32_t vertical_resolution;
     enum PixelFormat pixel_format;
 };
-
-#endif

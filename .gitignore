@@ -1,9 +1,8 @@
-disk.img
-debug.img
+.*.d
+*.o
+*.img
 kernel.elf
 Loader.efi
 Loader.debug
 debug.log
-tools/edk2
-tools/peinfo
 gdbscript

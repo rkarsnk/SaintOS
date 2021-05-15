@@ -109,9 +109,9 @@ debug: debug.img
 .PHONY: ovmf
 ovmf: edk2tool $(EDK2_DIR)/edksetup.sh
 	WORKSPACE=$(EDK2_DIR) source $(EDK2_DIR)/edksetup.sh --reconfig;\
-		WORKSPACE=$(EDK2_DIR) build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38	make -f Makefile.ovmf
+		WORKSPACE=$(EDK2_DIR) build -p OvmfPkg/OvmfPkgX64.dsc -b DEBUG -a X64 -t CLANG38
 
 .PHONY: prep
 prep: Makefile
-	git clone --depth 1 --recursive -b edk2-stable202102 https://github.com/tianocore/edk2.git  ${EDK2_DIR}
+	git submodule foreach git submodule update -i
 	

@@ -9,10 +9,16 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
-  Loader.c
-  Include/FrameBufferConfig.hpp
-  Include/ElfBinaryInfo.hpp
-  Include/MemoryMap.h
+  loader.c
+  logo.c
+  logo.h
+  mmap.c
+  mmap.h
+  efi_graphics.c
+  efi_graphics.h
+  Include/frame_buffer_config.h
+  Include/elf.h
+  Include/memory_map.h
 
 [Packages]
   MdePkg/MdePkg.dec

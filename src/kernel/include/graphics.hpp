@@ -1,6 +1,6 @@
 #pragma once
 
-#include <FrameBufferConfig.hpp>
+#include <frame_buffer_config.h>
 
 // PixelColor 構造体
 struct PixelColor {

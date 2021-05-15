@@ -1,8 +1,11 @@
 {
     "files.autoSave": "onFocusChange",
     "workbench.colorTheme": "Default Light+",
-    "clang.executable": "clang",
     "editor.fontFamily": "'Noto Mono','monospace', \"Ricty Diminished Discord with-icons\", 'Droid Sans Fallback'",
-    "git.ignoreLimitWarning": true,
-    "C_Cpp.errorSquiggles": "Disabled"
+    "C_Cpp.errorSquiggles": "Disabled",
+    "files.associations": {
+        "simplefilesystem.h": "c"
+    },
+    "C_Cpp.clang_format_path": "/usr/bin/clang-format-10",
+    "C_Cpp.clang_format_fallbackStyle": "LLVM"
 }
