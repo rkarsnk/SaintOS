@@ -61,10 +61,12 @@ edk2tool: $(EDK2_DIR)/BaseTools/Source/C/Makefile
 # QEMU
 #----------------------------------------------------------
 QEMU_MOUNT=$(WORKDIR)/mnt
+QEMU_ESP=$(WORKDIR)/esp
 QEMU=qemu-system-x86_64 -m 1G
 QEMU_UEFI=-drive if=pflash,format=raw,readonly,file=$(OVMF_CODE) \
 	-drive if=pflash,format=raw,file=$(OVMF_VARS) 
 QEMU_DISK=-drive if=ide,index=0,media=disk,format=raw,file
+QEMU_FAT=-drive if=ide,index=0,format=raw,file=fat:rw:$(QEMU_ESP)
 QEMU_COMMON=-device nec-usb-xhci,id=xhci \
 	  -device usb-mouse -device usb-kbd \
 	  -debugcon file:debug.log -global isa-debugcon.iobase=0x402 \
@@ -86,6 +88,7 @@ disk.img: Loader.efi kernel.elf
 	sleep 0.5
 	rmdir ${QEMU_MOUNT}
 
+
 debug.img: Loader.efi kernel.elf 
 	rm -rf $@
 	qemu-img create -f raw $@ 200M
@@ -100,11 +103,17 @@ debug.img: Loader.efi kernel.elf
 	sleep 0.5
 	rmdir ${QEMU_MOUNT}
 
+.PHONY: $(QEMU_ESP)
+$(QEMU_ESP): Loader.efi kernel.elf
+	mkdir -p esp/EFI/BOOT
+	cp kernel.elf esp
+	cp Loader.efi esp/EFI/BOOT/BOOTX64.efi
+
 .PHONY: run debug
 run: disk.img	
 	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
-debug: debug.img
-	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
+debug: $(QEMU_ESP)
+	$(QEMU) $(QEMU_UEFI) $(QEMU_FAT) $(QEMU_COMMON) -s
 
 .PHONY: ovmf
 ovmf: edk2tool $(EDK2_DIR)/edksetup.sh
