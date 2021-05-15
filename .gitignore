@@ -6,3 +6,5 @@ Loader.efi
 Loader.debug
 debug.log
 gdbscript
+esp/*
+!esp/startup.nsh
