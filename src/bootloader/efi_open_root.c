@@ -1,4 +1,5 @@
 #include "efi_open_root.h"
+#include "efi_messages.h"
 
 /* OpenRootDir */
 EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root) {
@@ -9,7 +10,7 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root) {
                     (VOID **)&loaded_image, image_handle, NULL,
                     EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
-  Print(L"[INFO] UEFI Image Base :0x%0lx\n", loaded_image->ImageBase);
+  PrintInfo(INFO, L"UEFI Image Base :0x%0lx\n", loaded_image->ImageBase);
 
   gBS->OpenProtocol(loaded_image->DeviceHandle,
                     &gEfiSimpleFileSystemProtocolGuid, (VOID **)&fs,

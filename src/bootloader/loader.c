@@ -21,13 +21,6 @@
 #define ENTRY_POINT_OFFSET 24     // ELF形式のENTRYPOINT Offset
 #define FRAME_BUFFER_COLOR 255    // FrameBuffer Color white
 
-#define INFO 0
-#define ERROR 1
-
-// XGA
-#define RES_HORZ 1024
-#define RES_VERT 768
-
 void Stall() {
   gBS->Stall(500000);  // 0.5秒処理を遅らせる
 }
@@ -76,14 +69,14 @@ EFI_STATUS WaitForPressAnyKey() {
 
   status = gBS->WaitForEvent(1, &(gST->ConIn->WaitForKey), 0);
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] WaitForEvent error: %r\n", status);
+    PrintInfo(ERROR, L"WaitForEvent error: %r\n", status);
     Halt();
   }
 
   EFI_INPUT_KEY key;
   status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] ReadKeyStroke error: %r\n", status);
+    PrintInfo(ERROR, L"ReadKeyStroke error: %r\n", status);
     Halt();
   }
   return EFI_SUCCESS;
@@ -99,7 +92,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
   status = OpenGOP(image_handle, &gop);
   if (EFI_ERROR(status)) {
-    Print(L"failed to open GOP: %r\n", status);
+    PrintInfo(ERROR, L"failed to open GOP: %r\n", status);
     Halt();
   }
 
@@ -119,7 +112,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   //この実装は機種によっては利用出来ない場合がある
   status = gop->SetMode(gop, vga_mode);
   if (EFI_ERROR(status)) {
-    Print(L"failed to change resolution: %r\n", status);
+    PrintInfo(ERROR, L"failed to change resolution: %r\n", status);
     Halt();
   }
 
@@ -138,11 +131,11 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
 
   status = WaitForPressAnyKey();
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] WaitForPressAnyKey error: %r\n", status);
+    PrintInfo(ERROR, L"WaitForPressAnyKey error: %r\n", status);
     Halt();
   }
 
-  Print(L"[INFO] FrameBuffer Resolution: %u * %u\n",
+  PrintInfo(INFO, L"FrameBuffer Resolution: %u * %u\n",
         gop->Mode->Info->HorizontalResolution,
         gop->Mode->Info->VerticalResolution);
   Stall();
@@ -152,7 +145,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   struct MemoryMap memmap = {sizeof(memmap_buffer), memmap_buffer, 0, 0, 0, 0};
   status = GetMemoryMap(&memmap);
   if (EFI_ERROR(status)) {
-    Print(L"failed to get memory map: %r\n", status);
+    PrintInfo(ERROR, L"failed to get memory map: %r\n", status);
     Halt();
   }
 
@@ -162,7 +155,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   EFI_FILE_PROTOCOL *root_dir;
   status = OpenRootDir(image_handle, &root_dir);
   if (EFI_ERROR(status)) {
-    Print(L"failed to open root directory: %r\n", status);
+    PrintInfo(ERROR, L"failed to open root directory: %r\n", status);
     Halt();
   }
   /*　GOP Mode Listをファイルに保存する */
@@ -171,17 +164,17 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
       root_dir, &goplist_file, L"\\goplist.txt",
       EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
   if (EFI_ERROR(status)) {
-    Print(L"failed to open file '\\goplist.txt': %r\n", status);
-    Print(L"Ignored.\n");
+    PrintInfo(ERROR, L"failed to open file '\\goplist.txt': %r\n", status);
+    PrintInfo(ERROR, L"Ignored.\n");
   } else {
     status = SaveGopModeList(gop, goplist_file);
     if (EFI_ERROR(status)) {
-      Print(L"failed to save GOP list: %r\n", status);
+      PrintInfo(ERROR, L"failed to save GOP list: %r\n", status);
       Halt();
     }
     goplist_file->Close(goplist_file);
     if (EFI_ERROR(status)) {
-      Print(L"failed to close GOP list file: %r\n", status);
+      PrintInfo(ERROR, L"failed to close GOP list file: %r\n", status);
       Halt();
     }
   }
@@ -192,27 +185,29 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
       root_dir, &memmap_file, L"\\memmap.csv",
       EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
   if (EFI_ERROR(status)) {
-    Print(L"failed to open file '\\memmap.csv': %r\n", status);
-    Print(L"Ignored.\n");
+    PrintInfo(ERROR, L"failed to open file '\\memmap.csv': %r\n", status);
+    PrintInfo(ERROR, L"Ignored.\n");
   } else {
     status = SaveMemoryMap(&memmap, memmap_file);
     if (EFI_ERROR(status)) {
-      Print(L"failed to save memory map: %r\n", status);
+      PrintInfo(ERROR, L"failed to save memory map: %r\n", status);
       Halt();
     }
     memmap_file->Close(memmap_file);
     if (EFI_ERROR(status)) {
-      Print(L"failed to close memory map: %r\n", status);
+      PrintInfo(ERROR, L"failed to close memory map: %r\n", status);
       Halt();
     }
   }
 
-  Print(L"[INFO] Pixel Format: %s, %u pixels/line\n",
-        GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
-        gop->Mode->Info->PixelsPerScanLine);
-  Print(L"[INFO] Frame Buffer: 0x%0lx - 0x%0lx\n", gop->Mode->FrameBufferBase,
-        gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize);
-  Print(L"[INFO] Frame Buffer Size: %lu bytes\n", gop->Mode->FrameBufferSize);
+  PrintInfo(INFO, L"Pixel Format: %s, %u pixels/line\n",
+            GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
+            gop->Mode->Info->PixelsPerScanLine);
+  PrintInfo(INFO, L"Frame Buffer: 0x%0lx - 0x%0lx\n",
+            gop->Mode->FrameBufferBase,
+            gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize);
+  PrintInfo(INFO, L"Frame Buffer Size: %lu bytes\n",
+            gop->Mode->FrameBufferSize);
   Stall();
 
   struct FrameBufferConfig config = {(UINT8 *)gop->Mode->FrameBufferBase,
@@ -228,7 +223,8 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
       config.pixel_format = kPixelBGRResv8BitPerColor;
       break;
     default:
-      Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
+      PrintInfo(ERROR, L"Unimplemented pixel format: %d\n",
+                gop->Mode->Info->PixelFormat);
       Halt();
   }
 
@@ -238,7 +234,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   status = root_dir->Open(root_dir, &kernel_elf, L"\\kernel.elf",
                           EFI_FILE_MODE_READ, 0);
   if (EFI_ERROR(status)) {
-    Print(L"failed to open file '\\kernel.elf': %r\n", status);
+    PrintInfo(ERROR, L"failed to open file '\\kernel.elf': %r\n", status);
     Halt();
   }
   Stall();
@@ -254,7 +250,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   status = kernel_elf->GetInfo(kernel_elf, &gEfiFileInfoGuid, &file_info_size,
                                file_info_buffer);
   if (EFI_ERROR(status)) {
-    Print(L"failed to get file information: %r\n", status);
+    PrintInfo(ERROR, L"failed to get file information: %r\n", status);
     Halt();
   }
   Stall();
@@ -269,13 +265,13 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   VOID *kernel_buffer;
   status = gBS->AllocatePool(EfiLoaderData, kernel_elf_size, &kernel_buffer);
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] failed to allocate pool:%r \n", status);
+    PrintInfo(ERROR, L"failed to allocate pool:%r \n", status);
     Halt();
   }
 
   status = kernel_elf->Read(kernel_elf, &kernel_elf_size, kernel_buffer);
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] failed to read kernel file:%r \n", status);
+    PrintInfo(ERROR, L"failed to read kernel file:%r \n", status);
     Halt();
   }
 
@@ -299,7 +295,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   status = gBS->AllocatePages(AllocateAddress, EfiLoaderData, num_pages,
                               &kernel_head_addr);
   if (EFI_ERROR(status)) {
-    Print(L"failed to allocate pages: %r\n", status);
+    PrintInfo(ERROR, L"failed to allocate pages: %r\n", status);
     Halt();
   }
   Stall();
@@ -308,9 +304,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   5.一時領域から最終配置場所にカーネルのロードセグメントを書き出す．
   --------------------------------------------------------*/
   CopyLoadSegments(kernel_ehdr);
-  Print(L"[INFO] Kernel: 0x%0lx - 0x%0lx\n", kernel_head_addr,
-        kernel_tail_addr);
-  Print(L"[INFO] Kernel size :%lu bytes\n", kernel_elf_size);
+  PrintInfo(INFO, L"Kernel: 0x%0lx - 0x%0lx\n", kernel_head_addr,
+            kernel_tail_addr);
+  PrintInfo(INFO, L"Kernel size :%lu bytes\n", kernel_elf_size);
   Stall();
 
   /*--------------------------------------------------------
@@ -318,16 +314,16 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   --------------------------------------------------------*/
   status = gBS->FreePool(kernel_buffer);
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] failed to free pool:%r\n", status);
+    PrintInfo(ERROR, L"failed to free pool:%r\n", status);
   }
   Stall();
 
   UINT64 entry_addr = *(UINT64 *)(kernel_head_addr + ENTRY_POINT_OFFSET);
-  Print(L"[INFO] Kernel entry_address: 0x%0lx \n", entry_addr);
+  PrintInfo(INFO, L"Kernel entry_address: 0x%0lx \n", entry_addr);
 
   status = WaitForPressAnyKey();
   if (EFI_ERROR(status)) {
-    Print(L"[ERROR] WaitForPressAnyKey error: %r\n", status);
+    PrintInfo(ERROR, L"WaitForPressAnyKey error: %r\n", status);
     Halt();
   }
 
@@ -336,12 +332,12 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   if (EFI_ERROR(status)) {
     status = GetMemoryMap(&memmap);
     if (EFI_ERROR(status)) {
-      Print(L"failed to get memory map: %r\n", status);
+      PrintInfo(ERROR, L"failed to get memory map: %r\n", status);
       Halt();
     }
     status = gBS->ExitBootServices(image_handle, memmap.map_key);
     if (EFI_ERROR(status)) {
-      Print(L"Could not exit boot service: %r\n", status);
+      PrintInfo(ERROR, L"Could not exit boot service: %r\n", status);
       Halt();
     }
   }
