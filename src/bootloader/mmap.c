@@ -1,4 +1,5 @@
 #include "mmap.h"
+#include "efi_messages.h"
 
 /* GetMemoryMap */
 EFI_STATUS GetMemoryMap(struct MemoryMap *map)
@@ -69,7 +70,7 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap *map,
 
   //ヘッダをファイルの先頭に書き出す
   file->Write(file, &len, header);
-  Print(L"[INFO] map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
+  PrintInfo(INFO, L"map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
 
   EFI_PHYSICAL_ADDRESS iter;
   int idx;

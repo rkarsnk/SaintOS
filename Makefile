@@ -61,15 +61,15 @@ edk2tool: $(EDK2_DIR)/BaseTools/Source/C/Makefile
 # QEMU
 #----------------------------------------------------------
 QEMU_MOUNT=$(WORKDIR)/mnt
-QEMU_ESP=$(WORKDIR)/esp
-QEMU=qemu-system-x86_64 -m 1G
+QEMU_DEBUG=$(WORKDIR)/debug
+QEMU=qemu-system-x86_64 -m 512M
 QEMU_UEFI=-drive if=pflash,format=raw,readonly,file=$(OVMF_CODE) \
 	-drive if=pflash,format=raw,file=$(OVMF_VARS) 
 QEMU_DISK=-drive if=ide,index=0,media=disk,format=raw,file
-QEMU_FAT=-drive if=ide,index=0,format=raw,file=fat:rw:$(QEMU_ESP)
+QEMU_FAT=-drive if=ide,index=0,media=disk,format=raw,file=fat:rw:$(QEMU_DEBUG)
 QEMU_COMMON=-device nec-usb-xhci,id=xhci \
 	  -device usb-mouse -device usb-kbd \
-	  -debugcon file:debug.log -global isa-debugcon.iobase=0x402 \
+	  -debugcon file:log/debug.log -global isa-debugcon.iobase=0x402 \
 	  -monitor stdio 
 
 # create disk.img
@@ -88,31 +88,16 @@ disk.img: Loader.efi kernel.elf
 	sleep 0.5
 	rmdir ${QEMU_MOUNT}
 
-
-debug.img: Loader.efi kernel.elf 
-	rm -rf $@
-	qemu-img create -f raw $@ 200M
-	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $@
-	mkdir -p ${QEMU_MOUNT} 
-	sudo mount -o loop $@ ${QEMU_MOUNT}
-	sleep 0.5
-	sudo mkdir -p ${QEMU_MOUNT}/EFI/BOOT
-	sudo cp Loader.efi kernel.elf esp/startup.nsh ${QEMU_MOUNT}/
-	sleep 0.5
-	sudo umount ${QEMU_MOUNT}
-	sleep 0.5
-	rmdir ${QEMU_MOUNT}
-
-.PHONY: $(QEMU_ESP)
-$(QEMU_ESP): Loader.efi kernel.elf
-	mkdir -p esp/EFI/BOOT
-	cp kernel.elf esp
-	cp Loader.efi esp/EFI/BOOT/BOOTX64.efi
+.PHONY: debug_fs
+debug_fs: Loader.efi kernel.elf
+	mkdir -p $(QEMU_DEBUG)/EFI/BOOT
+	cp kernel.elf $(QEMU_DEBUG)/
+	cp Loader.efi $(QEMU_DEBUG)/EFI/BOOT/BOOTX64.EFI
 
 .PHONY: run debug
 run: disk.img	
 	$(QEMU) $(QEMU_UEFI) $(QEMU_DISK)=$< $(QEMU_COMMON) -s
-debug: $(QEMU_ESP)
+debug: debug_fs
 	$(QEMU) $(QEMU_UEFI) $(QEMU_FAT) $(QEMU_COMMON) -s
 
 .PHONY: ovmf

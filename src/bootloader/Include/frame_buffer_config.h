@@ -6,6 +6,11 @@
 
 #include <stdint.h>
 
+// XGA
+#define RES_HORZ 1024
+#define RES_VERT 768
+
+
 enum PixelFormat{
     kPixelRGBResv8BitPerColor,
     kPixelBGRResv8BitPerColor,

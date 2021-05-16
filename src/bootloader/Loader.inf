@@ -12,10 +12,14 @@
   loader.c
   logo.c
   logo.h
+  efi_open_root.c
+  efi_open_root.h
   mmap.c
   mmap.h
   efi_graphics.c
   efi_graphics.h
+  efi_messages.c
+  efi_messages.h
   Include/frame_buffer_config.h
   Include/elf.h
   Include/memory_map.h
