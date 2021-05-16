@@ -8,38 +8,28 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/DiskIo2.h>
+#include <Protocol/GraphicsOutput.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Uefi.h>
 
 #include "loader_internal.h"
 
-// \kernel.elf を含む12文字
-#define LEN_OF_KERNFILENAME 12
-// kernel base address
-#define KERN_BASE_ADDR 0x100000;
-// UEFI Page size 4KiB
-#define UEFI_PAGE_SIZE 0x1000
-// ELF形式のENTRYPOINT Offset
-#define ENTRY_POINT_OFFSET 24
-// FrameBuffer Color white
-#define FRAME_BUFFER_COLOR 255
+#define LEN_OF_KERNFILENAME 12    // "\kernel.elf" を含む12文字
+#define KERN_BASE_ADDR 0x100000;  // kernel base address
+#define UEFI_PAGE_SIZE 0x1000     // UEFI Page size 4KiB
+#define ENTRY_POINT_OFFSET 24     // ELF形式のENTRYPOINT Offset
+#define FRAME_BUFFER_COLOR 255    // FrameBuffer Color white
 
 #define INFO 0
 #define ERROR 1
 
-#define mode_VGA 0
-#define mode_SVGA 2
-#define mode_XGA 6
-#define mode_HD 9
-#define mode_SXGA 14
-#define mode_UXGA 20
-#define mode_FHD 22
-#define mode_WUXGA 23
+// XGA
+#define RES_HORZ 1024
+#define RES_VERT 768
 
 void Stall() {
-  // 0.5秒処理を遅らせる
-  gBS->Stall(500000);
+  gBS->Stall(500000);  // 0.5秒処理を遅らせる
 }
 
 /* CalcLoadAddressRange */
@@ -114,11 +104,29 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   }
 
   /* 解像度をSXGAに変更する */
+  int vga_mode = 0;
+  for (int i = 0; i < gop->Mode->MaxMode; ++i) {
+    UINTN gop_info_size;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *gop_info;
+    gop->QueryMode(gop, i, &gop_info_size, &gop_info);
+    if (gop_info->HorizontalResolution == RES_HORZ &&
+        gop_info->VerticalResolution == RES_VERT) {
+      vga_mode = i;
+      break;
+    }
+  }
+
   //この実装は機種によっては利用出来ない場合がある
-  status = gop->SetMode(gop, mode_SVGA);
+  status = gop->SetMode(gop, vga_mode);
   if (EFI_ERROR(status)) {
     Print(L"failed to change resolution: %r\n", status);
     Halt();
+  }
+
+  Print(L"Booting SaintOS.");
+  for (int i = 0; i < 5; ++i) {
+    Stall();
+    Print(L".");
   }
 
   /* コンソールのクリーン */
