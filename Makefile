@@ -62,7 +62,7 @@ edk2tool: $(EDK2_DIR)/BaseTools/Source/C/Makefile
 #----------------------------------------------------------
 QEMU_MOUNT=$(WORKDIR)/mnt
 QEMU_ESP=$(WORKDIR)/esp
-QEMU=qemu-system-x86_64 -m 1G
+QEMU=qemu-system-x86_64 -m 512M
 QEMU_UEFI=-drive if=pflash,format=raw,readonly,file=$(OVMF_CODE) \
 	-drive if=pflash,format=raw,file=$(OVMF_VARS) 
 QEMU_DISK=-drive if=ide,index=0,media=disk,format=raw,file
