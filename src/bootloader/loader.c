@@ -1,19 +1,16 @@
+#include <Guid/FileInfo.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/PrintLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/UefiRuntimeLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
-#include <Uefi.h>
-
-#include <Library/BaseMemoryLib.h>
-#include <Library/MemoryAllocationLib.h>
-#include <Library/PrintLib.h>
-
 #include <Protocol/BlockIo.h>
 #include <Protocol/DiskIo2.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
-
-#include <Guid/FileInfo.h>
+#include <Uefi.h>
 
 #include "loader_internal.h"
 
@@ -52,8 +49,7 @@ void CalcLoadAddressRange(Elf64_ElfHeader *ehdr, UINT64 *head, UINT64 *tail) {
   *head = MAX_UINT64;
   *tail = 0;
   for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type != PT_LOAD)
-      continue;
+    if (phdr[i].p_type != PT_LOAD) continue;
     *head = MIN(*head, phdr[i].p_vaddr);
     *tail = MAX(*tail, phdr[i].p_vaddr + phdr[i].p_memsz);
   }
@@ -64,8 +60,7 @@ void CopyLoadSegments(Elf64_ElfHeader *ehdr) {
   Elf64_ProgramHeader *phdr =
       (Elf64_ProgramHeader *)((UINT64)ehdr + ehdr->e_phoffset);
   for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type != PT_LOAD)
-      continue;
+    if (phdr[i].p_type != PT_LOAD) continue;
 
     UINT64 segm_in_file = (UINT64)ehdr + phdr[i].p_offset;
     CopyMem((VOID *)phdr[i].p_vaddr, (VOID *)segm_in_file, phdr[i].p_filesz);
@@ -77,8 +72,7 @@ void CopyLoadSegments(Elf64_ElfHeader *ehdr) {
 
 /* Halt */
 void Halt(void) {
-  while (1)
-    __asm__("hlt");
+  while (1) __asm__("hlt");
 }
 
 /*----------------------------------------------
@@ -134,6 +128,12 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   /* ロゴを出力 */
   PrintLogo();
 
+  status = WaitForPressAnyKey();
+  if (EFI_ERROR(status)) {
+    Print(L"[ERROR] WaitForPressAnyKey error: %r\n", status);
+    Halt();
+  }
+
   Print(L"[INFO] FrameBuffer Resolution: %u * %u\n",
         gop->Mode->Info->HorizontalResolution,
         gop->Mode->Info->VerticalResolution);
@@ -159,26 +159,20 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   }
   /*　GOP Mode Listをファイルに保存する */
   EFI_FILE_PROTOCOL *goplist_file;
-  status = root_dir->Open(root_dir,
-                          &goplist_file,
-                          L"\\goplist.txt",
-                          EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE |
-  EFI_FILE_MODE_CREATE, 0); if (EFI_ERROR(status))
-  {
+  status = root_dir->Open(
+      root_dir, &goplist_file, L"\\goplist.txt",
+      EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+  if (EFI_ERROR(status)) {
     Print(L"failed to open file '\\goplist.txt': %r\n", status);
     Print(L"Ignored.\n");
-  }
-  else
-  {
+  } else {
     status = SaveGopModeList(gop, goplist_file);
-    if (EFI_ERROR(status))
-    {
+    if (EFI_ERROR(status)) {
       Print(L"failed to save GOP list: %r\n", status);
       Halt();
     }
     goplist_file->Close(goplist_file);
-    if (EFI_ERROR(status))
-    {
+    if (EFI_ERROR(status)) {
       Print(L"failed to close GOP list file: %r\n", status);
       Halt();
     }
@@ -186,26 +180,20 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
 
   /* メモリマップをファイルに保存する */
   EFI_FILE_PROTOCOL *memmap_file;
-  status = root_dir->Open(root_dir,
-                          &memmap_file,
-                          L"\\memmap.csv",
-                          EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE |
-  EFI_FILE_MODE_CREATE, 0); if (EFI_ERROR(status))
-  {
+  status = root_dir->Open(
+      root_dir, &memmap_file, L"\\memmap.csv",
+      EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+  if (EFI_ERROR(status)) {
     Print(L"failed to open file '\\memmap.csv': %r\n", status);
     Print(L"Ignored.\n");
-  }
-  else
-  {
+  } else {
     status = SaveMemoryMap(&memmap, memmap_file);
-    if (EFI_ERROR(status))
-    {
+    if (EFI_ERROR(status)) {
       Print(L"failed to save memory map: %r\n", status);
       Halt();
     }
     memmap_file->Close(memmap_file);
-    if (EFI_ERROR(status))
-    {
+    if (EFI_ERROR(status)) {
       Print(L"failed to close memory map: %r\n", status);
       Halt();
     }
@@ -225,15 +213,15 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
                                      gop->Mode->Info->VerticalResolution, 0};
 
   switch (gop->Mode->Info->PixelFormat) {
-  case PixelRedGreenBlueReserved8BitPerColor:
-    config.pixel_format = kPixelRGBResv8BitPerColor;
-    break;
-  case PixelBlueGreenRedReserved8BitPerColor:
-    config.pixel_format = kPixelBGRResv8BitPerColor;
-    break;
-  default:
-    Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
-    Halt();
+    case PixelRedGreenBlueReserved8BitPerColor:
+      config.pixel_format = kPixelRGBResv8BitPerColor;
+      break;
+    case PixelBlueGreenRedReserved8BitPerColor:
+      config.pixel_format = kPixelBGRResv8BitPerColor;
+      break;
+    default:
+      Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
+      Halt();
   }
 
   /* kernel.elfの読み込み */
@@ -314,7 +302,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   CopyLoadSegments(kernel_ehdr);
   Print(L"[INFO] Kernel: 0x%0lx - 0x%0lx\n", kernel_head_addr,
         kernel_tail_addr);
-  Print(L"[INFO] Kernel size :%lu bytes)\n", kernel_elf_size);
+  Print(L"[INFO] Kernel size :%lu bytes\n", kernel_elf_size);
   Stall();
 
   /*--------------------------------------------------------
