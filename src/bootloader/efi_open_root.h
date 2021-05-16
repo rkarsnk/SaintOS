@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Uefi.h>
-#include <Library/UefiLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiLib.h>
+#include <Uefi.h>
 
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>

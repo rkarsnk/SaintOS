@@ -136,8 +136,8 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   }
 
   PrintInfo(INFO, L"FrameBuffer Resolution: %u * %u\n",
-        gop->Mode->Info->HorizontalResolution,
-        gop->Mode->Info->VerticalResolution);
+            gop->Mode->Info->HorizontalResolution,
+            gop->Mode->Info->VerticalResolution);
   Stall();
 
   /* メモリマップの取得 */

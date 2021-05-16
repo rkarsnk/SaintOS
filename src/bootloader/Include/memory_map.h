@@ -3,7 +3,7 @@
 #include <Uefi.h>
 
 /* MemoryMap structure */
-struct MemoryMap{
+struct MemoryMap {
   UINTN buffer_size;
   VOID *buffer;
   UINTN map_size;

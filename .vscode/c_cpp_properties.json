@@ -1,22 +1,19 @@
 {
     "configurations": [
         {
-            "name": "StOS C/C++",
+            "name": "Linux",
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include/X64",
-                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include",
-                "${workspaceFolder}/tools/edk2/MdePkg/Test/UnitTest/Include",
-                "${workspaceFolder}/tools/edk2/MdePkg/Include/X64",
-                "${workspaceFolder}/tools/edk2/MdePkg/Include",
-                "${workspaceFolder}/tools/edk2/MdePkg",
+                "${workspaceFolder}/src/bootloader/Include",
+                "${workspaceFolder}/src/kernel/include",
                 "${workspaceFolder}/tools/x86_64-elf/include/c++/v1",
                 "${workspaceFolder}/tools/x86_64-elf/include",
                 "${workspaceFolder}/tools/x86_64-elf/include/freetype2",
-                "${workspaceFolder}/src/bootloader/Include",
-                "${workspaceFolder}/src/kernel/include"
+                "${workspaceFolder}/tools/edk2/MdePkg/Include",
+                "${workspaceFolder}/tools/edk2/MdePkg/Include/X64",
+                "${workspaceFolder}/tools/x86_64-elf/include/c++/v1"
             ],
-            "compilerPath": "/usr/bin/clang",
+            "compilerPath": "",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-clang-x64"
