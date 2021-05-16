@@ -6,14 +6,15 @@
                 "${default}",
                 "${workspaceFolder}/src/bootloader/Include",
                 "${workspaceFolder}/src/kernel/include",
-                "${workspaceFolder}/tools/x86_64-elf/include/c++/v1",
-                "${workspaceFolder}/tools/x86_64-elf/include",
-                "${workspaceFolder}/tools/x86_64-elf/include/freetype2",
+                "${workspaceFolder}/tools/x86_64-elf/include/**",
                 "${workspaceFolder}/tools/edk2/MdePkg/Include",
                 "${workspaceFolder}/tools/edk2/MdePkg/Include/X64",
-                "${workspaceFolder}/tools/x86_64-elf/include/c++/v1"
+                "${workspaceFolder}/tools/edk2/MdePkg/Test/UnitTest/Include",
+                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include",
+                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include/X64",
+                "${workspaceFolder}/tools/edk2/BaseTools/Source/C/Include/Common"
             ],
-            "compilerPath": "",
+            "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-clang-x64"
