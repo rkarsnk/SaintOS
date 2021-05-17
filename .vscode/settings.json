@@ -6,4 +6,5 @@
     "editor.fontFamily": "'Noto Mono','monospace', 'Ricty Diminished Discord with-icons', 'Droid Sans Fallback'",
     "terminal.integrated.fontFamily": "'Ricty Diminished Discord with-icons', monospace",
     "terminal.integrated.fontSize": 16,
+    "C_Cpp.errorSquiggles": "Disabled",
 }
