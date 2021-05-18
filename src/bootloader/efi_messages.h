@@ -8,4 +8,4 @@
 #define INFO 0
 #define ERROR 1
 
-EFIAPI EFI_STATUS PrintInfo(UINTN level, const CHAR16* Format,...);
+EFIAPI EFI_STATUS PrintInfo(UINTN level, const CHAR16* Format, ...);

@@ -32,7 +32,8 @@ void CalcLoadAddressRange(Elf64_ElfHeader *ehdr, UINT64 *head, UINT64 *tail) {
   *head = MAX_UINT64;
   *tail = 0;
   for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type != PT_LOAD) continue;
+    if (phdr[i].p_type != PT_LOAD)
+      continue;
     *head = MIN(*head, phdr[i].p_vaddr);
     *tail = MAX(*tail, phdr[i].p_vaddr + phdr[i].p_memsz);
   }
@@ -43,7 +44,8 @@ void CopyLoadSegments(Elf64_ElfHeader *ehdr) {
   Elf64_ProgramHeader *phdr =
       (Elf64_ProgramHeader *)((UINT64)ehdr + ehdr->e_phoffset);
   for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type != PT_LOAD) continue;
+    if (phdr[i].p_type != PT_LOAD)
+      continue;
 
     UINT64 segm_in_file = (UINT64)ehdr + phdr[i].p_offset;
     CopyMem((VOID *)phdr[i].p_vaddr, (VOID *)segm_in_file, phdr[i].p_filesz);
@@ -55,7 +57,8 @@ void CopyLoadSegments(Elf64_ElfHeader *ehdr) {
 
 /* Halt */
 void Halt(void) {
-  while (1) __asm__("hlt");
+  while (1)
+    __asm__("hlt");
 }
 
 /*----------------------------------------------
@@ -116,6 +119,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     Halt();
   }
 
+  /* Bootwait画面を表示 */
   Print(L"Booting SaintOS.");
   for (int i = 0; i < 5; ++i) {
     Stall();
@@ -129,16 +133,17 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   /* ロゴを出力 */
   PrintLogo();
 
-  status = WaitForPressAnyKey();
+  /* UEFIイメージのrootディレクトリを開く */
+  EFI_FILE_PROTOCOL *root_dir;
+  status = OpenRootDir(image_handle, &root_dir);
   if (EFI_ERROR(status)) {
-    PrintInfo(ERROR, L"WaitForPressAnyKey error: %r\n", status);
+    PrintInfo(ERROR, L"failed to open root directory: %r\n", status);
     Halt();
   }
 
   PrintInfo(INFO, L"FrameBuffer Resolution: %u * %u\n",
-        gop->Mode->Info->HorizontalResolution,
-        gop->Mode->Info->VerticalResolution);
-  Stall();
+            gop->Mode->Info->HorizontalResolution,
+            gop->Mode->Info->VerticalResolution);
 
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
@@ -149,15 +154,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     Halt();
   }
 
-  Stall();
-
-  /* メモリマップのファイルへの書き出し */
-  EFI_FILE_PROTOCOL *root_dir;
-  status = OpenRootDir(image_handle, &root_dir);
-  if (EFI_ERROR(status)) {
-    PrintInfo(ERROR, L"failed to open root directory: %r\n", status);
-    Halt();
-  }
   /*　GOP Mode Listをファイルに保存する */
   EFI_FILE_PROTOCOL *goplist_file;
   status = root_dir->Open(
@@ -208,7 +204,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
             gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize);
   PrintInfo(INFO, L"Frame Buffer Size: %lu bytes\n",
             gop->Mode->FrameBufferSize);
-  Stall();
 
   struct FrameBufferConfig config = {(UINT8 *)gop->Mode->FrameBufferBase,
                                      gop->Mode->Info->PixelsPerScanLine,
@@ -237,7 +232,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     PrintInfo(ERROR, L"failed to open file '\\kernel.elf': %r\n", status);
     Halt();
   }
-  Stall();
 
   // file_info_size はEFI_FILE_INFOのサイズ＋ファイル名長(ヌル文字含む)
   UINTN file_info_size =
@@ -253,7 +247,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     PrintInfo(ERROR, L"failed to get file information: %r\n", status);
     Halt();
   }
-  Stall();
 
   /*--------------------------------------------------------
   1.kernel_bufferに一時的なカーネルロード領域を確保
@@ -298,7 +291,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     PrintInfo(ERROR, L"failed to allocate pages: %r\n", status);
     Halt();
   }
-  Stall();
 
   /*--------------------------------------------------------
   5.一時領域から最終配置場所にカーネルのロードセグメントを書き出す．
@@ -307,7 +299,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   PrintInfo(INFO, L"Kernel: 0x%0lx - 0x%0lx\n", kernel_head_addr,
             kernel_tail_addr);
   PrintInfo(INFO, L"Kernel size :%lu bytes\n", kernel_elf_size);
-  Stall();
 
   /*--------------------------------------------------------
   5.不要な一時領域を開放する．
@@ -316,7 +307,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   if (EFI_ERROR(status)) {
     PrintInfo(ERROR, L"failed to free pool:%r\n", status);
   }
-  Stall();
 
   UINT64 entry_addr = *(UINT64 *)(kernel_head_addr + ENTRY_POINT_OFFSET);
   PrintInfo(INFO, L"Kernel entry_address: 0x%0lx \n", entry_addr);

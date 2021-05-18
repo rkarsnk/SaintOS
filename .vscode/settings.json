@@ -1,11 +1,10 @@
 {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
     "files.autoSave": "onFocusChange",
     "workbench.colorTheme": "Default Light+",
-    "editor.fontFamily": "'Noto Mono','monospace', \"Ricty Diminished Discord with-icons\", 'Droid Sans Fallback'",
+    "editor.fontFamily": "'Noto Mono','monospace', 'Ricty Diminished Discord with-icons', 'Droid Sans Fallback'",
+    "terminal.integrated.fontFamily": "'Ricty Diminished Discord with-icons', monospace",
+    "terminal.integrated.fontSize": 16,
     "C_Cpp.errorSquiggles": "Disabled",
-    "files.associations": {
-        "simplefilesystem.h": "c"
-    },
-    "C_Cpp.clang_format_path": "/usr/bin/clang-format-10",
-    "C_Cpp.clang_format_fallbackStyle": "LLVM"
 }
