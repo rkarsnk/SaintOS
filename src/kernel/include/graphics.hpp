@@ -45,7 +45,11 @@ class PixelWriter {
    * 座標(x, y)から操作するフレームバッファのPixelのメモリアドレスを取得する
    */
   uint8_t* PixelAt(int x, int y) {
-    return config_.frame_buffer + 4 * (config_.pixels_per_scan_line * y + x);
+    if ((config_.pixels_per_scan_line * y + x) >= 0) {
+      return config_.frame_buffer + 4 * (config_.pixels_per_scan_line * y + x);
+    } else {
+      return config_.frame_buffer;
+    }
   }
 };
 
@@ -60,3 +64,21 @@ class BGRResv8BitPerColorPixelWriter : public PixelWriter {
   using PixelWriter::PixelWriter;
   virtual void Write(int x, int y, const PixelColor& color) override;
 };
+
+template <typename T>
+struct Vector2D {
+  T x, y;
+};
+
+void DrawRectangle(PixelWriter& writer, const Vector2D<int>& pos,
+                   const Vector2D<int>& size, const PixelColor& color);
+void FillRectangle(PixelWriter& writer, const Vector2D<int>& pos,
+                   const Vector2D<int>& size, const PixelColor& color);
+
+void DrawCircle(PixelWriter& writer, const Vector2D<int>& center, int radius,
+                const PixelColor& color);
+void FillCircle(PixelWriter& writer, const Vector2D<int>& center, int radius,
+                const PixelColor& color);
+
+void DrawFillEllpse(PixelWriter& writer, const Vector2D<int>& center, int rad_x,
+                    int rad_y, const PixelColor& color);

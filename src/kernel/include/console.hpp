@@ -7,8 +7,7 @@ class Console {
   /* ttyRows行 * ttyColumns列 */
   static const int ttyRows = RES_HORZ / 8, ttyColumns = RES_VERT / 16;
 
-  Console(PixelWriter& writer, const PixelColor& fg_color,
-          const PixelColor& bg_color);
+  Console(PixelWriter& writer, const PixelColor& fg_color, const PixelColor& bg_color);
   void PutString(const char* s);
 
  private:

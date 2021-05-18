@@ -14,7 +14,7 @@ void framebuffer_init(const FrameBufferConfig& config) {
 
   for (int x = 0; x < config.horizontal_resolution; ++x) {
     for (int y = 0; y < config.vertical_resolution; ++y) {
-      pixel_writer->Write(x, y, {0xE6, 0xE6, 0xE6});
+      pixel_writer->Write(x, y, {0xFF, 0xFF, 0xFF});
     }
   }
 }

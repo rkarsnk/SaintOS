@@ -10,7 +10,7 @@ extern const uint8_t _binary_hankaku_bin_end;
 extern const uint8_t _binary_hankaku_bin_size;
 
 const uint8_t* GetFont(char c) {
-  auto index = 16 * static_cast<unsigned int>(c);
+  auto index = FONT_Y_LEN * static_cast<unsigned int>(c);
   if (index >= reinterpret_cast<uintptr_t>(&_binary_hankaku_bin_size)) {
     return nullptr;
   }
@@ -26,8 +26,8 @@ void WriteAscii(PixelWriter& writer, int x, int y, char c,
   if (font == nullptr) {
     return;
   }
-  for (int cy = 0; cy < 16; ++cy) {
-    for (int cx = 0; cx < 8; ++cx) {
+  for (int cy = 0; cy < FONT_Y_LEN; ++cy) {
+    for (int cx = 0; cx < FONT_X_LEN; ++cx) {
       if ((font[cy] << cx) & 0x80u) {
         writer.Write(x + cx, y + cy, color);
       }
@@ -41,6 +41,6 @@ void WriteAscii(PixelWriter& writer, int x, int y, char c,
 void WriteString(PixelWriter& writer, int x, int y, const char* string,
                  const PixelColor& color) {
   for (int i = 0; string[i] != '\0'; ++i) {
-    WriteAscii(writer, x + 8 * i, y, string[i], color);
+    WriteAscii(writer, x + FONT_X_LEN * i, y, string[i], color);
   }
 }
