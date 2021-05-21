@@ -5,9 +5,11 @@
 class Console {
  public:
   /* ttyRows行 * ttyColumns列 */
-  static const int ttyRows = RES_HORZ / 8, ttyColumns = RES_VERT / 16;
+  //  static const int ttyRows = RES_VERT / 8, ttyColumns = RES_HORZ / 16;
+  static const int ttyRows = 25, ttyColumns = 100;
 
-  Console(PixelWriter& writer, const PixelColor& fg_color, const PixelColor& bg_color);
+  Console(PixelWriter& writer, const PixelColor& fg_color,
+          const PixelColor& bg_color);
   void PutString(const char* s);
 
  private:
