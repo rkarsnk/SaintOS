@@ -1,6 +1,7 @@
 .*.d
 *.o
 *.img
+*.bin
 kernel.elf
 Loader.efi
 Loader.debug

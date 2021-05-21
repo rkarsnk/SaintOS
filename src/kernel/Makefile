@@ -1,5 +1,6 @@
 TARGET = kernel.elf
-OBJS = main.o c_graphics.o font.o framebuffer.o operator.o global.o hankaku.o newlib_support.o c_console.o mouse.o
+OBJS = main.o c_graphics.o font.o framebuffer.o operator.o global.o hankaku.o \
+	newlib_support.o c_console.o mouse.o printk.o pci.o asmfunc.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
 WORKDIR=../..
@@ -25,7 +26,7 @@ all: $(TARGET)
 
 .PHONY: clean
 clean:
-	rm -rf *.o kernel.elf .*.d *.bin
+	rm -rf *.o .*.d *.bin kernel.elf
 
 kernel.elf: $(OBJS) Makefile
 	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS) -lc
@@ -37,14 +38,19 @@ kernel.elf: $(OBJS) Makefile
 	clang++ $(CPPFLAGS) $(CXXFLAGS) -MM $< > $@
 	$(eval OBJ = $(<:.cpp=.o))
 	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+	mv $@ ./depends
 
 %.o: %.c Makefile
 	clang $(CPPFLAGS) $(CFLAGS) -c $<
 
-%.o: %.c
+.%.d: %.c
 	clang $(CPPFLAGS) $(CFLAGS) -MM $< > $@
 	$(eval OBJ = $(<:.c=.o))
 	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+	mv $@ ./depends
+
+%.o: %.asm Makefile
+	nasm -f elf64 -o $@ $<
 
 hankaku.bin: font/hankaku.txt
 	$(MKFONT_CMD) -o $@ $<
@@ -54,9 +60,11 @@ hankaku.o: hankaku.bin
 
 .%.d: %.bin
 	touch $@
+	mv $@ ./depends
+
 
 .PHONY: depends
 depends:
 	$(MAKE) $(DEPENDS)
 
--include $(DEPENDS)
+#-include $(DEPENDS)
