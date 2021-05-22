@@ -35,6 +35,8 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
       Console(*pixel_writer, {0xFF, 0xFF, 0xFF}, {0x00, 0x00, 0x00});
 
   printk("Hello. SaintOS World.\n");
+  printk("Console Format:%d rows * %d columns.\n", console->ttyRows,
+         console->ttyColumns);
 
   pci_init();
   /* なんちゃってマウスカーソルを描画 */
