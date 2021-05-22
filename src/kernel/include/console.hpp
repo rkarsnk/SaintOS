@@ -5,8 +5,7 @@
 class Console {
  public:
   /* ttyRows行 * ttyColumns列 */
-  //  static const int ttyRows = RES_VERT / 8, ttyColumns = RES_HORZ / 16;
-  static const int ttyRows = 25, ttyColumns = 100;
+  static const int ttyRows = RES_VERT / 16, ttyColumns = RES_HORZ / 8;
 
   Console(PixelWriter& writer, const PixelColor& fg_color,
           const PixelColor& bg_color);

@@ -18,13 +18,12 @@ namespace {
            | (reg_addr & 0xfcu);  // set 1bit and 0bit field = 00 (1111100)
   }
 
-  Error AddDevice(uint8_t bus, uint8_t device, uint8_t function,
-                  uint8_t header_type) {
+  Error AddDevice(const Device& device) {
     if (num_device == devices.size()) {
       return Error::kFull;
     }
 
-    devices[num_device] = Device{bus, device, function, header_type};
+    devices[num_device] = device;
     ++num_device;
     return Error::kSuccess;
   }
@@ -32,18 +31,19 @@ namespace {
   Error ScanBus(uint8_t bus);
 
   Error ScanFunction(uint8_t bus, uint8_t device, uint8_t function) {
+    auto class_code = ReadClassCode(bus, device, function);
     auto header_type = ReadHeaderType(bus, device, function);
-    if (auto err = AddDevice(bus, device, function, header_type)) {
+    auto vendor_id = ReadVendorId(bus, device, function);
+    auto device_id = ReadDeviceId(bus, device, function);
+    Device dev{bus,       device,    function,  header_type,
+               vendor_id, device_id, class_code};
+    if (auto err = AddDevice(dev)) {
       return err;
     }
 
-    auto class_code = ReadClassCode(bus, device, function);
-    uint8_t base = (class_code >> 24) & 0xffu;
-    uint8_t sub = (class_code >> 16) & 0xffu;
-
     //PCI-PCIブリッジ決め打ち
     // ？？？header_type == 1　で条件文書いても同様のことができるのではないだろうか．
-    if (base == 0x06u && sub == 0x04u) {
+    if (class_code.Match(0x06u, 0x04u)) {
       auto bus_numbers = ReadBusNumbers(bus, device, function);
       uint8_t secondary_bus = (bus_numbers >> 8) & 0xffu;
       return ScanBus(secondary_bus);
@@ -120,10 +120,15 @@ namespace pci {
     return (ReadPciConfigData() >> 16) & 0xffu;
   }
 
-  uint32_t ReadClassCode(uint8_t bus, uint8_t device, uint8_t function) {
+  ClassCode ReadClassCode(uint8_t bus, uint8_t device, uint8_t function) {
     WritePciConfigAddress(
         MakeAddress(bus, device, function, PCI_CLASSCODE));
-    return ReadPciConfigData();
+    auto reg = ReadPciConfigData();
+    ClassCode cc;
+    cc.base = (reg >> 24) & 0xffu;
+    cc.sub = (reg >> 16) & 0xffu;
+    cc.interface = (reg >> 8) & 0xffu;
+    return cc;
   }
 
   uint32_t ReadBusNumbers(uint8_t bus, uint8_t device, uint8_t function) {
