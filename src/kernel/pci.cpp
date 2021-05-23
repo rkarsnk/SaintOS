@@ -1,9 +1,17 @@
 #include <pci.hpp>
-
+/* ---------------------------------------------------------------------------
+CONFIG_ADDRESSレジスタ:
+| 31|30  -   24|23  -  16|15    -   11|10     -     8|7     -      2|  1| 0 |
+|   | Reserved | Bus No. | Device No. | Fucntion No. | Register No. | 0 | 0 |
+  ^
+  | Enable bit (1 = enabled, 0 = disabled)
+                                   ref) PCI Local Bus Specification Rev.3.0 P.50
+  -----------------------------------------------------------------------------*/
 namespace {
   using namespace pci;
+
   uint32_t MakeAddress(uint8_t bus, uint8_t device, uint8_t function,
-                       uint8_t reg_addr) {
+                       uint8_t reg) {
     /*
     xを左にbitsシフトした値を返すラムダ関数
     */
@@ -11,11 +19,11 @@ namespace {
       return x << bits;
     };
 
-    return shl(1, 31)             // set enable bit
-           | shl(bus, 16)         // set bus_no
-           | shl(device, 11)      // set device_no
-           | shl(function, 8)     // set function_no
-           | (reg_addr & 0xfcu);  // set 1bit and 0bit field = 00 (1111100)
+    return shl(1, 31)          // set enable bit
+           | shl(bus, 16)      // set bus_no
+           | shl(device, 11)   // set device_no
+           | shl(function, 8)  // set function_no
+           | (reg & ~0x03);    // set 1bit and 0bit field = 00 (1111100)
   }
 
   Error AddDevice(const Device& device) {
@@ -86,29 +94,81 @@ namespace {
 
 }  // namespace
 
+/*
+// enable configuration space accesses and return data port address
+static int
+pci_cfgenable(unsigned bus, unsigned slot, unsigned func, int reg, int bytes)
+{
+        int dataport = 0;
+
+        if (bus <= PCI_BUSMAX && slot <= PCI_SLOTMAX && func <= PCI_FUNCMAX &&
+            (unsigned)reg <= PCI_REGMAX && bytes != 3 &&
+            (unsigned)bytes <= 4 && (reg & (bytes - 1)) == 0) {
+                outl(CONF1_ADDR_PORT, (1U << 31) | (bus << 16) | (slot << 11) 
+                    | (func << 8) | (reg & ~0x03));
+                dataport = CONF1_DATA_PORT + (reg & 0x03);
+        }
+        return (dataport);
+}
+
+*/
+
 namespace pci {
+
+  void pci_cfg_test() {
+    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
+                            (PCI_CLASSCODE & ~0x03));
+    printk("[DEBUG] ClassCode %08x:%08x\n",
+           (PCI_DATA_PORT + (PCI_CLASSCODE & 0x03)),
+           inl(PCI_DATA_PORT + (PCI_CLASSCODE & 0x03)));
+
+    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
+                            (_PCI_BASE_CLASS & ~0x03));
+    printk("[DEBUG] 8-7 %08x:%02x\n",
+           (PCI_DATA_PORT + (_PCI_BASE_CLASS & 0x03)),
+           inb(PCI_DATA_PORT + (_PCI_BASE_CLASS & 0x03)));
+
+    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
+                            (_PCI_SUB_CLASS & ~0x03));
+    printk("[DEBUG] 6-5 %08x:%02x\n",
+           (PCI_DATA_PORT + (_PCI_SUB_CLASS & 0x03)),
+           inb(PCI_DATA_PORT + (_PCI_SUB_CLASS & 0x03)));
+
+    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
+                            (_PCI_CLASS_INTERFACE & ~0x03));
+    printk("[DEBUG] 4-3 %08x:%02x\n",
+           (PCI_DATA_PORT + (_PCI_CLASS_INTERFACE & 0x03)),
+           inb(PCI_DATA_PORT + (_PCI_CLASS_INTERFACE & 0x03)));
+
+    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
+                            (_PCI_CLASS_INTERFACE & ~0x03));
+    printk("[DEBUG] 2-1 %08x:%02x\n",
+           (PCI_DATA_PORT + (_PCI_REVISION_ID & 0x03)),
+           inb(PCI_DATA_PORT + (_PCI_REVISION_ID & 0x03)));
+  }
+
   void WritePciConfigAddress(uint32_t address) {
-    IoOut32(kConfigAddress, address);
+    outl(kConfigAddress, address);
   }
 
   void WritePciConfigData(uint32_t value) {
-    IoOut32(kConfigData, value);
+    outl(kConfigData, value);
   }
 
   uint32_t ReadPciConfigData() {
-    return IoIn32(kConfigData);
+    return inl(kConfigData);
   }
 
   uint16_t ReadVendorId(uint8_t bus, uint8_t device, uint8_t function) {
     WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_VENDOR_ADN_DEVICE_ID));
+        MakeAddress(bus, device, function, PCI_VENDOR_AND_DEVICE_ID));
     //上位16bitをマスクして，下位16bitのVENDOR IDを取り出す．
     return ReadPciConfigData() & 0xffffu;
   }
 
   uint16_t ReadDeviceId(uint8_t bus, uint8_t device, uint8_t function) {
     WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_VENDOR_ADN_DEVICE_ID));
+        MakeAddress(bus, device, function, PCI_VENDOR_AND_DEVICE_ID));
     //16bit 右にシフトして，上位16bitのDevice IDを取り出す．
     return ReadPciConfigData() >> 16;
   }

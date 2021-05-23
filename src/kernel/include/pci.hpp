@@ -7,6 +7,7 @@ PCIバス制御プログラム
 #include <array>
 #include <cstdint>
 
+#include <cpufunc.hpp>
 #include <error.hpp>
 #include <printk.hpp>
 
@@ -23,7 +24,7 @@ CONFIG_ADDRESSレジスタ:
   -----------------------------------------------------------------------------*/
 
 /* PCI Configuration spaces offset */
-#define PCI_VENDOR_ADN_DEVICE_ID 0x00  //32bits
+#define PCI_VENDOR_AND_DEVICE_ID 0x00  //32bits
 #define _PCI_VENDOR_ID 0x00            //16bits, Vendor ID
 #define _PCI_DEVICE_ID 0x02            //16bits, Device ID
 #define PCI_COMMAND_AND_STATUS 0x04    //32bits
@@ -52,6 +53,9 @@ CONFIG_ADDRESSレジスタ:
 #define _PCI_SECONDARY_BUS 0x19    // Secondary bus number
 #define _PCI_SUBORDINATE_BUS 0x1a  // Highest bus number behind the bridge
 
+#define PCI_CONF_PORT 0x0cf8
+#define PCI_DATA_PORT 0x0cfc
+
 namespace pci {
   /*------------------------------------------------
   PC/ATでは，
@@ -59,8 +63,8 @@ namespace pci {
    - CFCh : CONFIG_DATA
    refer to PCI Local Bus Specification Rev.3.0 P50
   -------------------------------------------------*/
-  const uint16_t kConfigAddress = 0x0CF8;
-  const uint16_t kConfigData = 0x0CFC;
+  const uint16_t kConfigAddress = 0x0cf8;
+  const uint16_t kConfigData = 0x0cfc;
 
   struct ClassCode {
     uint8_t base, sub, interface;
@@ -83,6 +87,8 @@ namespace pci {
     uint16_t vendor_id, device_id;
     ClassCode class_code;
   };
+
+  void pci_cfg_test();
 
   void WritePciConfigAddress(uint32_t address);
   void WritePciConfigData(uint32_t value);

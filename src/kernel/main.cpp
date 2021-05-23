@@ -41,6 +41,9 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   printk("Console Format:%d rows * %d columns.\n", console->ttyRows,
          console->ttyColumns);
 
+  /* テストコード 
+  pci::pci_cfg_test();
+  */
   pci_init();
 
   SetLogLevel(kInfo);

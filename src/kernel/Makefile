@@ -1,6 +1,6 @@
 TARGET = kernel.elf
 OBJS = main.o c_graphics.o font.o hankaku.o framebuffer.o operator.o global.o \
-	   newlib_support.o c_console.o mouse.o printk.o pci.o asmfunc.o logger.o
+	   newlib_support.o c_console.o mouse.o printk.o pci.o logger.o
 #	   xhc.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
@@ -49,9 +49,6 @@ kernel.elf: $(OBJS) Makefile
 	$(eval OBJ = $(<:.c=.o))
 	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
 	mv $@ ./depends
-
-%.o: %.asm Makefile
-	nasm -f elf64 -o $@ $<
 
 hankaku.bin: font/hankaku.txt
 	$(MKFONT_CMD) -o $@ $<
