@@ -1,7 +1,7 @@
 TARGET = kernel.elf
 OBJS = main.o c_graphics.o font.o hankaku.o framebuffer.o operator.o global.o \
-	   newlib_support.o c_console.o mouse.o printk.o pci.o logger.o
-#	   xhc.o
+	   newlib_support.o c_console.o mouse.o printk.o pci.o logger.o \
+	   xhc.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
 WORKDIR=../..
