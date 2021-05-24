@@ -21,12 +21,12 @@ namespace {
 
   Error AddDevice(const Device& device) {
     if (num_device == devices.size()) {
-      return Error::kFull;
+      return MAKE_ERROR(Error::kFull);
     }
 
     devices[num_device] = device;
     ++num_device;
-    return Error::kSuccess;
+    return MAKE_ERROR(Error::kSuccess);
   }
 
   Error ScanBus(uint8_t bus);
@@ -50,7 +50,7 @@ namespace {
       return ScanBus(secondary_bus);
     }
 
-    return Error::kSuccess;
+    return MAKE_ERROR(Error::kSuccess);
   }
 
   Error ScanDevice(uint8_t bus, uint8_t device) {
@@ -59,7 +59,7 @@ namespace {
     }
 
     if (IsSingleFunctionDevice(ReadHeaderType(bus, device, 0))) {
-      return Error::kSuccess;
+      return MAKE_ERROR(Error::kSuccess);
     }
 
     for (uint8_t function = 1; function < 8; ++function) {
@@ -70,7 +70,7 @@ namespace {
         return err;
       }
     }
-    return Error::kSuccess;
+    return MAKE_ERROR(Error::kSuccess);
   }
 
   Error ScanBus(uint8_t bus) {
@@ -82,10 +82,9 @@ namespace {
         return err;
       }
     }
-    return Error::kSuccess;
+    return MAKE_ERROR(Error::kSuccess);
   }
-
-}
+}  //namespace
 
 namespace pci {
   void WritePciConfigAddress(uint32_t address) {
@@ -160,9 +159,44 @@ namespace pci {
         return err;
       }
     }
-    return Error::kSuccess;
+    return MAKE_ERROR(Error::kSuccess);
   }
-}
+  uint32_t ReadConfReg(const Device& dev, uint8_t reg_addr) {
+    WritePciConfigAddress(
+        MakeAddress(dev.bus, dev.device, dev.function, reg_addr));
+    return ReadPciDataDWORD(reg_addr);
+  }
+
+  void WriteConfReg(const Device& dev, uint8_t reg_addr, uint32_t value) {
+    WritePciConfigAddress(
+        MakeAddress(dev.bus, dev.device, dev.function, reg_addr));
+    WritePciConfigData(value);
+  }
+
+  WithError<uint64_t> ReadBar(Device& device, unsigned int bar_index) {
+    if (bar_index >= 6) {
+      return {0, MAKE_ERROR(Error::kIndexOutOfRange)};
+    }
+
+    const auto addr = CalcBarAddress(bar_index);
+    const auto bar = ReadConfReg(device, addr);
+
+    // 32 bit address
+    if ((bar & 4u) == 0) {
+      return {bar, MAKE_ERROR(Error::kSuccess)};
+    }
+
+    // 64 bit address
+    if (bar_index >= 5) {
+      return {0, MAKE_ERROR(Error::kIndexOutOfRange)};
+    }
+
+    const auto bar_upper = ReadConfReg(device, addr + 4);
+    return {bar | (static_cast<uint64_t>(bar_upper) << 32),
+            MAKE_ERROR(Error::kSuccess)};
+  }
+
+}  //namespace pci
 
 void pci_init() {
   auto err = pci::ScanAllBus();

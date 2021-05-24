@@ -10,3 +10,4 @@ gdbscript
 debug/*
 !debug/startup.nsh
 src/kernel/usb/*
+src/kernel/include/usb/*
