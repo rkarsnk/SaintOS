@@ -7,8 +7,9 @@ PCIバス制御プログラム
 #include <array>
 #include <cstdint>
 
+#include <cpufunc.hpp>
 #include <error.hpp>
-#include <printk.hpp>
+#include <logger.hpp>
 
 #include <asmfunc.h>
 #include <pcidevs.h>
@@ -23,22 +24,21 @@ CONFIG_ADDRESSレジスタ:
   -----------------------------------------------------------------------------*/
 
 /* PCI Configuration spaces offset */
-#define PCI_VENDOR_ADN_DEVICE_ID 0x00  //32bits
-#define _PCI_VENDOR_ID 0x00            //16bits, Vendor ID
-#define _PCI_DEVICE_ID 0x02            //16bits, Device ID
-#define PCI_COMMAND_AND_STATUS 0x04    //32bits
-#define _PCI_COMMAND 0x04              //16bits, PCI Command
-#define _PCI_STATUS 0x06               //16bits, PCI Status
-#define PCI_CLASSCODE 0x08             //32bits
-#define _PCI_REVISION_ID 0x08          //8bits, Revision ID
-#define _PCI_CLASS_INTERFACE 0x09      //8bits, Programming Interfaces
-#define _PCI_SUB_CLASS 0x0A            //8bits, Device sub class
-#define _PCI_BASE_CLASS 0x0B           //8bits, Device base class
-#define PCI_HEADER_TYPE 0x0C           //32bits
-#define _PCI_CACHE_LINE_SIZE 0x0C      //8bits, Cache Line Size
-#define _PCI_LATENCY_TIMER 0x0D        //8bits, Latency Timer
-#define _PCI_HEADER_TYPE 0x0E          //8bits
-#define _PCI_BIST 0x0F                 //8bits
+#define PCIR_VENDOR_AND_DEVICE_ID 0x00  //32bits
+#define PCIR_VENDOR_ID 0x00             //16bits, Vendor ID
+#define PCIR_DEVICE_ID 0x02             //16bits, Device ID
+#define PCIR_COMMAND_AND_STATUS 0x04    //32bits
+#define PCIR_COMMAND 0x04               //16bits, PCI Command
+#define PCIR_STATUS 0x06                //16bits, PCI Status
+#define PCIR_CLASSCODE 0x08             //32bits
+#define PCIR_REVISION_ID 0x08           //8bits, Revision ID
+#define PCIR_CLASS_INTERFACE 0x09       //8bits, Programming Interfaces
+#define PCIR_SUB_CLASS 0x0A             //8bits, Device sub class
+#define PCIR_BASE_CLASS 0x0B            //8bits, Device base class
+#define PCIR_CACHE_LINE_SIZE 0x0C       //8bits, Cache Line Size
+#define PCIR_LATENCY_TIMER 0x0D         //8bits, Latency Timer
+#define PCIR_HEADER_TYPE 0x0E           //8bits
+#define PCIR_BIST 0x0F                  //8bits
 
 /* PCI Header Type */
 #define PCI_HEADER_TYPE_MASK 0x7f  //PCI header type mask
@@ -52,6 +52,9 @@ CONFIG_ADDRESSレジスタ:
 #define _PCI_SECONDARY_BUS 0x19    // Secondary bus number
 #define _PCI_SUBORDINATE_BUS 0x1a  // Highest bus number behind the bridge
 
+#define PCI_CONF_PORT 0x0cf8
+#define PCI_DATA_PORT 0x0cfc
+
 namespace pci {
   /*------------------------------------------------
   PC/ATでは，
@@ -59,8 +62,8 @@ namespace pci {
    - CFCh : CONFIG_DATA
    refer to PCI Local Bus Specification Rev.3.0 P50
   -------------------------------------------------*/
-  const uint16_t kConfigAddress = 0x0CF8;
-  const uint16_t kConfigData = 0x0CFC;
+  const uint16_t kConfigAddress = 0x0cf8;
+  const uint16_t kConfigData = 0x0cfc;
 
   struct ClassCode {
     uint8_t base, sub, interface;
@@ -84,9 +87,14 @@ namespace pci {
     ClassCode class_code;
   };
 
+  void pci_cfg_test();
+
   void WritePciConfigAddress(uint32_t address);
   void WritePciConfigData(uint32_t value);
-  uint32_t ReadPciConfigData();
+
+  uint32_t ReadPciDataDWORD(uint32_t reg);
+  uint16_t ReadPciDataWORD(uint32_t reg);
+  uint8_t ReadPciDataBYTE(uint32_t reg);
 
   uint16_t ReadVendorId(uint8_t bus, uint8_t device, uint8_t function);
   uint16_t ReadDeviceId(uint8_t bus, uint8_t device, uint8_t function);

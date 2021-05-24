@@ -1,5 +1,6 @@
 #pragma once
 
+#include <logger.hpp>
 #include <pci.hpp>
 
-//extern pci::Device* xhc_dev;
+void scan_xhc();
