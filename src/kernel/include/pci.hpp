@@ -39,6 +39,12 @@ CONFIG_ADDRESSレジスタ:
 #define PCIR_LATENCY_TIMER 0x0D         //8bits, Latency Timer
 #define PCIR_HEADER_TYPE 0x0E           //8bits
 #define PCIR_BIST 0x0F                  //8bits
+#define PCIR_BAR0 0x10                  //32bits, Base Address Register
+#define PCIR_BAR1 0x14                  //32bits
+#define PCIR_BAR2 0x18                  //32bits
+#define PCIR_BAR3 0x1C                  //32bits
+#define PCIR_BAR4 0x20                  //32bits
+#define PCIR_BAR5 0x24                  //32bits
 
 /* PCI Header Type */
 #define PCI_HEADER_TYPE_MASK 0x7f  //PCI header type mask
@@ -105,7 +111,7 @@ namespace pci {
     return ReadVendorId(dev.bus, dev.device, dev.function);
   }
 
-  uint32_t ReadConfigReg(const Device& dev, uint8_t reg_addr);
+  uint32_t ReadConfReg(const Device& dev, uint8_t reg_addr);
 
   void WriteConfReg(const Device& dev, uint8_t reg_addr, uint32_t value);
 
@@ -118,8 +124,11 @@ namespace pci {
 
   Error ScanAllBus();
 
+  constexpr uint8_t CalcBarAddress(unsigned int bar_index) {
+    return PCIR_BAR0 + (4 * bar_index);
+  }
+
+  WithError<uint64_t> ReadBar(Device& device, unsigned int bar_index);
 }  // namespace pci
 
 void pci_init();
-
-void find_xhc();

@@ -9,3 +9,4 @@ extern PixelWriter* pixel_writer;
 
 extern char console_buf[sizeof(Console)];
 extern Console* console;
+

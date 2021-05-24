@@ -11,7 +11,7 @@
 #include <global.hpp>       //グローバル変数
 #include <graphics.hpp>     //PixelWriterクラス
 #include <logger.hpp>       //log関数
-#include <mouse.hpp>        //マウスカーソル表示
+#include <mouse.hpp>        //マウス表示
 #include <operator.hpp>     //配置new
 #include <pci.hpp>          //pci初期化・探索
 #include <printk.hpp>       //printk関数
@@ -36,6 +36,9 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   console = new (console_buf)
       Console(*pixel_writer, {0xFF, 0xFF, 0xFF}, {0x00, 0x00, 0x00});
 
+  mouse_cursor = new (mouse_cursor_buf)
+      MouseCursor{pixel_writer, {0xFF, 0xFF, 0xFF}, {500, 400}};
+
   printk("Hello. SaintOS World.\n");
   SetLogLevel(kInfo);
 
@@ -47,10 +50,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   */
   pci_init();
 
-  scan_xhc();
-
-  /* なんちゃってマウスカーソルを描画 */
-  draw_mouse_cursor();
+  xhc_init();
 
   halt();
 }
