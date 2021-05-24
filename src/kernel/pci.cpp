@@ -12,18 +12,11 @@ namespace {
 
   uint32_t MakeAddress(uint8_t bus, uint8_t device, uint8_t function,
                        uint8_t reg) {
-    /*
-    xを左にbitsシフトした値を返すラムダ関数
-    */
-    auto shl = [](uint32_t x, unsigned int bits) {
-      return x << bits;
-    };
-
-    return shl(1, 31)          // set enable bit
-           | shl(bus, 16)      // set bus_no
-           | shl(device, 11)   // set device_no
-           | shl(function, 8)  // set function_no
-           | (reg & ~0x03);    // set 1bit and 0bit field = 00 (1111100)
+    return (1U << 31)         // set enable bit
+           | (bus << 16)      // set bus_no
+           | (device << 11)   // set device_no
+           | (function << 8)  // set function_no
+           | (reg & ~0x03);   // set 1bit and 0bit field = 00
   }
 
   Error AddDevice(const Device& device) {
@@ -92,98 +85,49 @@ namespace {
     return Error::kSuccess;
   }
 
-}  // namespace
-
-/*
-// enable configuration space accesses and return data port address
-static int
-pci_cfgenable(unsigned bus, unsigned slot, unsigned func, int reg, int bytes)
-{
-        int dataport = 0;
-
-        if (bus <= PCI_BUSMAX && slot <= PCI_SLOTMAX && func <= PCI_FUNCMAX &&
-            (unsigned)reg <= PCI_REGMAX && bytes != 3 &&
-            (unsigned)bytes <= 4 && (reg & (bytes - 1)) == 0) {
-                outl(CONF1_ADDR_PORT, (1U << 31) | (bus << 16) | (slot << 11) 
-                    | (func << 8) | (reg & ~0x03));
-                dataport = CONF1_DATA_PORT + (reg & 0x03);
-        }
-        return (dataport);
 }
 
-*/
-
 namespace pci {
-
-  void pci_cfg_test() {
-    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
-                            (PCI_CLASSCODE & ~0x03));
-    printk("[DEBUG] ClassCode %08x:%08x\n",
-           (PCI_DATA_PORT + (PCI_CLASSCODE & 0x03)),
-           inl(PCI_DATA_PORT + (PCI_CLASSCODE & 0x03)));
-
-    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
-                            (_PCI_BASE_CLASS & ~0x03));
-    printk("[DEBUG] 8-7 %08x:%02x\n",
-           (PCI_DATA_PORT + (_PCI_BASE_CLASS & 0x03)),
-           inb(PCI_DATA_PORT + (_PCI_BASE_CLASS & 0x03)));
-
-    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
-                            (_PCI_SUB_CLASS & ~0x03));
-    printk("[DEBUG] 6-5 %08x:%02x\n",
-           (PCI_DATA_PORT + (_PCI_SUB_CLASS & 0x03)),
-           inb(PCI_DATA_PORT + (_PCI_SUB_CLASS & 0x03)));
-
-    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
-                            (_PCI_CLASS_INTERFACE & ~0x03));
-    printk("[DEBUG] 4-3 %08x:%02x\n",
-           (PCI_DATA_PORT + (_PCI_CLASS_INTERFACE & 0x03)),
-           inb(PCI_DATA_PORT + (_PCI_CLASS_INTERFACE & 0x03)));
-
-    outl(PCI_CONF_PORT, (1U << 31) | (0 << 16) | (4 << 11) | (0 << 8) |
-                            (_PCI_CLASS_INTERFACE & ~0x03));
-    printk("[DEBUG] 2-1 %08x:%02x\n",
-           (PCI_DATA_PORT + (_PCI_REVISION_ID & 0x03)),
-           inb(PCI_DATA_PORT + (_PCI_REVISION_ID & 0x03)));
-  }
-
   void WritePciConfigAddress(uint32_t address) {
-    outl(kConfigAddress, address);
+    outl(PCI_CONF_PORT, address);
   }
 
   void WritePciConfigData(uint32_t value) {
-    outl(kConfigData, value);
+    outl(PCI_DATA_PORT, value);
   }
 
-  uint32_t ReadPciConfigData() {
-    return inl(kConfigData);
+  uint32_t ReadPciDataDWORD(uint32_t reg) {
+    return inl(PCI_DATA_PORT + (reg & 0x03));
+  }
+
+  uint16_t ReadPciDataWORD(uint32_t reg) {
+    return inw(PCI_DATA_PORT + (reg & 0x03));
+  }
+
+  uint8_t ReadPciDataBYTE(uint32_t reg) {
+    return inb(PCI_DATA_PORT + (reg & 0x03));
   }
 
   uint16_t ReadVendorId(uint8_t bus, uint8_t device, uint8_t function) {
-    WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_VENDOR_AND_DEVICE_ID));
+    WritePciConfigAddress(MakeAddress(bus, device, function, PCIR_VENDOR_ID));
     //上位16bitをマスクして，下位16bitのVENDOR IDを取り出す．
-    return ReadPciConfigData() & 0xffffu;
+    return ReadPciDataWORD(PCIR_VENDOR_ID);
   }
 
   uint16_t ReadDeviceId(uint8_t bus, uint8_t device, uint8_t function) {
-    WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_VENDOR_AND_DEVICE_ID));
-    //16bit 右にシフトして，上位16bitのDevice IDを取り出す．
-    return ReadPciConfigData() >> 16;
+    WritePciConfigAddress(MakeAddress(bus, device, function, PCIR_DEVICE_ID));
+    return ReadPciDataWORD(PCIR_DEVICE_ID);
   }
 
   uint8_t ReadHeaderType(uint8_t bus, uint8_t device, uint8_t function) {
-    WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_HEADER_TYPE));
+    WritePciConfigAddress(MakeAddress(bus, device, function, PCIR_HEADER_TYPE));
     //16bit右シフト後，上位8bitをマスクして，下位8bitのHeader Typeを取り出す
-    return (ReadPciConfigData() >> 16) & 0xffu;
+    return ReadPciDataBYTE(PCIR_HEADER_TYPE);
   }
 
   ClassCode ReadClassCode(uint8_t bus, uint8_t device, uint8_t function) {
-    WritePciConfigAddress(
-        MakeAddress(bus, device, function, PCI_CLASSCODE));
-    auto reg = ReadPciConfigData();
+    WritePciConfigAddress(MakeAddress(bus, device, function, PCIR_CLASSCODE));
+    auto reg = ReadPciDataDWORD(PCIR_CLASSCODE);
     ClassCode cc;
     cc.base = (reg >> 24) & 0xffu;
     cc.sub = (reg >> 16) & 0xffu;
@@ -193,7 +137,7 @@ namespace pci {
 
   uint32_t ReadBusNumbers(uint8_t bus, uint8_t device, uint8_t function) {
     WritePciConfigAddress(MakeAddress(bus, device, function, PCI_BUS_NO));
-    return ReadPciConfigData();
+    return ReadPciDataDWORD(PCI_BUS_NO);
   }
 
   bool IsSingleFunctionDevice(uint8_t header_type) {
@@ -218,21 +162,20 @@ namespace pci {
     }
     return Error::kSuccess;
   }
-
-}  // namespace pci
+}
 
 void pci_init() {
   auto err = pci::ScanAllBus();
-  printk("ScanAllBus: %s\n", err.Name());
+  Log(kInfo, "ScanAllBus: %s\n", err.Name());
 
   for (int i = 0; i < pci::num_device; ++i) {
     const auto& dev = pci::devices[i];
     auto vendor_id = pci::ReadVendorId(dev.bus, dev.device, dev.function);
     auto device_id = pci::ReadDeviceId(dev.bus, dev.device, dev.function);
-    auto class_code =
-        pci::ReadClassCode(dev.bus, dev.device, dev.function);
-    printk("%02d:%02d:%d: ", dev.bus, dev.device, dev.function);
-    printk("vendor:%04x, device:%04x, class:%08x, head %02x\n", vendor_id,
-           device_id, class_code, dev.header_type);
+    auto class_code = pci::ReadClassCode(dev.bus, dev.device, dev.function);
+    Log(kInfo,
+        "%02d:%02d:%d: vendor:%04x, device:%04x, class:%08x, head %02x\n",
+        dev.bus, dev.device, dev.function, vendor_id, device_id, class_code,
+        dev.header_type);
   }
 }
