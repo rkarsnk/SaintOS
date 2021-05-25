@@ -80,3 +80,20 @@ void DrawCircle(PixelWriter& writer, const Vector2D<int>& center, int radius,
 void DrawFillEllpse(PixelWriter& writer, const Vector2D<int>& pos, int rad_x,
                     int rad_y, const PixelColor& color) {
 }
+
+/*----------------------------------------------------------------------
+  const int kFrameWidth = frame_buffer_config.horizontal_resolution;
+  const int kFrameHeight = frame_buffer_config.vertical_resolution;
+
+  //四角形を出力
+  DrawRectangle(*pixel_writer, {0, 21}, {kFrameWidth, 1}, {0x00, 0x00,
+  0x00});
+  //塗りつぶし四角形を出力
+  FillRectangle(*pixel_writer, {0, 0}, {kFrameWidth, 20}, {0xBB, 0xBB,
+  0xBB});
+
+  //円を出力
+  DrawCircle(*pixel_writer, {200, 300}, 80, {0xFF, 0x00, 0x00});
+  //塗りつぶし円を出力
+  FillCircle(*pixel_writer, {600, 300}, 80, {0x00, 0x00, 0xFF});
+  ----------------------------------------------------------------------*/

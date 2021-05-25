@@ -3,10 +3,6 @@
 char mouse_cursor_buf[sizeof(MouseCursor)];
 MouseCursor* mouse_cursor;
 
-void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-  mouse_cursor->MoveRelative({displacement_x, displacement_y});
-}
-
 void xhc_init() {
   pci::Device* xhc_dev = nullptr;
   for (int i = 0; i < pci::num_device; ++i) {
@@ -38,12 +34,11 @@ void xhc_init() {
   if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
     SwitchEhci2Xhci(*xhc_dev);
   }
-  {
-    auto err = xhc.Initialize();
-    Log(kDebug, "xhc.Intialize: %s\n", err.Name());
-  }
 
-  Log(kInfo, "xHC starting\n");
+  auto err = xhc.Initialize();
+  Log(kDebug, "xhc.Intialize: %s\n", err.Name());
+
+  Log(kInfo, "xHC starting.\n");
   xhc.Run();
 
   usb::HIDMouseDriver::default_observer = MouseObserver;
@@ -88,6 +83,10 @@ void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
   pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports);            // XUSB2PR
   Log(kDebug, "SwitchEhci2Xhci: SS = %02, xHCI = %02x\n", superspeed_ports,
       ehci2xhci_ports);
+}
+
+void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
+  mouse_cursor->MoveRelative({displacement_x, displacement_y});
 }
 
 extern "C" void __cxa_pure_virtual() {

@@ -27,7 +27,7 @@ namespace {
       "@@      @.@    ",  //
       "@       @.@    ",  //
       "         @.@   ",  //
-      "         @@@   ",  //
+      "          @@   ",  //
   };
 
   void DrawMouseCursor(PixelWriter* pixel_writer, Vector2D<int> position) {
@@ -72,3 +72,7 @@ void MouseCursor::MoveRelative(Vector2D<int> displacement) {
 }
 // #@@range_end(mouse_class)
 
+void mouse_cursor_init() {
+  mouse_cursor = new (mouse_cursor_buf)
+      MouseCursor{pixel_writer, {0xFF, 0xFF, 0xFF}, {500, 400}};
+}

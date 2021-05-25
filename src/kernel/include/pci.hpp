@@ -11,7 +11,6 @@ PCIバス制御プログラム
 #include <error.hpp>
 #include <logger.hpp>
 
-#include <asmfunc.h>
 #include <pcidevs.h>
 
 /* ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@
  * 
  * FreeBSD のsys/amd64/include/cpufunc.hから抜粋
  */
+#pragma once
 
 static __inline uint8_t inb(uint16_t port) {
   uint8_t data;
@@ -32,4 +33,9 @@ static __inline void outw(uint16_t port, uint16_t data) {
 
 static __inline void outl(uint16_t port, uint32_t data) {
   __asm __volatile("outl %0, %w1" : : "a"(data), "Nd"(port));
+}
+
+static __inline void halt() {
+  while (1)
+    __asm__("hlt");
 }

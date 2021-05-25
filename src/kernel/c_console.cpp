@@ -5,10 +5,6 @@
  */
 #include <console.hpp>
 
-#include <cstring>
-
-#include <font.hpp>
-
 Console::Console(PixelWriter& writer, const PixelColor& fg_color,
                  const PixelColor& bg_color)
     : writer_{writer},
@@ -49,4 +45,22 @@ void Console::NewLine() {
     }
     memset(buffer_[ttyRows - 1], 0, ttyColumns + 1);
   }
+}
+
+extern char console_buf[sizeof(Console)];
+extern Console* console;
+
+void console_init() {
+  /*
+  Console(PixelWriter& writer,
+          const PixelColor& fg_color,
+          const PixelColor& bg_color)
+  */
+  console = new (console_buf)
+      Console(*pixel_writer, {0xFF, 0xFF, 0xFF}, {0x00, 0x00, 0x00});
+
+  printk("Hello. SaintOS World.\n");
+
+  printk("Console Format:%d rows * %d columns.\n", console->ttyRows,
+         console->ttyColumns);
 }

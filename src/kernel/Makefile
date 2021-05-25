@@ -1,8 +1,11 @@
 TARGET = kernel.elf
-OBJS = main.o c_graphics.o font.o hankaku.o framebuffer.o operator.o global.o \
-	   newlib_support.o libcxx_support.o c_console.o mouse.o printk.o pci.o logger.o \
-	   xhc.o \
-	   usb/memory.o usb/device.o usb/xhci/ring.o usb/xhci/trb.o usb/xhci/xhci.o \
+OBJS = main.o font.o framebuffer.o operator.o global.o printk.o logger.o \
+	   c_graphics.o c_console.o c_mouse.o \
+	   pci.o xhc.o \
+	   hankaku.o \
+	   lib/newlib_support.o lib/libcxx_support.o \
+	   usb/memory.o usb/device.o \
+	   usb/xhci/ring.o usb/xhci/trb.o usb/xhci/xhci.o \
        usb/xhci/port.o usb/xhci/device.o usb/xhci/devmgr.o usb/xhci/registers.o \
        usb/classdriver/base.o usb/classdriver/hid.o usb/classdriver/keyboard.o \
        usb/classdriver/mouse.o
@@ -60,6 +63,7 @@ hankaku.bin: font/hankaku.txt
 
 hankaku.o: hankaku.bin
 	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 $< $@
+	rm -rf $<
 
 .%.d: %.bin
 	touch $@

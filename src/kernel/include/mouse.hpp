@@ -1,6 +1,7 @@
 #pragma once
 
-#include <global.hpp>
+#include <new>
+
 #include <graphics.hpp>
 
 class MouseCursor {
@@ -17,3 +18,5 @@ class MouseCursor {
 
 extern char mouse_cursor_buf[sizeof(MouseCursor)];
 extern MouseCursor* mouse_cursor;
+
+void mouse_cursor_init();

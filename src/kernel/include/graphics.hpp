@@ -77,6 +77,9 @@ struct Vector2D {
   }
 };
 
+extern char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
+extern PixelWriter* pixel_writer;
+
 void DrawRectangle(PixelWriter& writer, const Vector2D<int>& pos,
                    const Vector2D<int>& size, const PixelColor& color);
 void FillRectangle(PixelWriter& writer, const Vector2D<int>& pos,
