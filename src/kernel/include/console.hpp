@@ -1,6 +1,11 @@
 #pragma once
 
+#include <cstring>
+#include <new>
+
+#include <font.hpp>
 #include <graphics.hpp>
+#include <printk.hpp>
 
 class Console {
  public:
@@ -19,3 +24,8 @@ class Console {
   char buffer_[ttyRows][ttyColumns + 1];
   int cursor_row_, cursor_column_;
 };
+
+extern char console_buf[sizeof(Console)];
+extern Console* console;
+
+void console_init();

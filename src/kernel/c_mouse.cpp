@@ -1,6 +1,6 @@
 #include <mouse.hpp>
 
-namespace {
+namespace cursor {
   const int kMouseCursorWidth = 15;
   const int kMouseCursorHeight = 24;
   const char mouse_cursor_shape[kMouseCursorHeight][kMouseCursorWidth + 1]{
@@ -27,7 +27,7 @@ namespace {
       "@@      @.@    ",  //
       "@       @.@    ",  //
       "         @.@   ",  //
-      "         @@@   ",  //
+      "          @@   ",  //
   };
 
   void DrawMouseCursor(PixelWriter* pixel_writer, Vector2D<int> position) {
@@ -54,21 +54,27 @@ namespace {
       }
     }
   }
-}
+}  // namespace cursor
 
-// #@@range_begin(mouse_class)
+/* MouseCursor コンストラクタ Overload  */
 MouseCursor::MouseCursor(PixelWriter* writer, PixelColor erase_color,
                          Vector2D<int> initial_position)
     : pixel_writer_{writer},
       erase_color_{erase_color},
       position_{initial_position} {
-  DrawMouseCursor(pixel_writer_, position_);
+  cursor::DrawMouseCursor(pixel_writer_, position_);
 }
 
 void MouseCursor::MoveRelative(Vector2D<int> displacement) {
-  EraseMouseCursor(pixel_writer_, position_, erase_color_);
+  cursor::EraseMouseCursor(pixel_writer_, position_, erase_color_);
   position_ += displacement;
-  DrawMouseCursor(pixel_writer_, position_);
+  cursor::DrawMouseCursor(pixel_writer_, position_);
 }
-// #@@range_end(mouse_class)
 
+char mouse_cursor_buf[sizeof(MouseCursor)];
+MouseCursor* mouse_cursor;
+
+void mouse_cursor_init() {
+  mouse_cursor = new (mouse_cursor_buf)
+      MouseCursor{pixel_writer, {0xFF, 0xFF, 0xFF}, {500, 400}};
+}

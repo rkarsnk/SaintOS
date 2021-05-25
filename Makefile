@@ -9,9 +9,12 @@ OVMF_CODE=$(OVMF_BASE)/FV/OVMF_CODE.fd
 OVMF_VARS=$(OVMF_BASE)/FV/OVMF_VARS.fd
 OVMF_FILE=$(OVMF_BASE)/FV/OVMF.fd
 
+LOADER_EFI=$(EDK2_DIR)/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.efi
+LOADER_DEBUG=$(EDK2_DIR)/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.debug
+TARGET=$(LOADER_EFI)
 
 .PHONY: all
-all: Loader.efi kernel.elf
+all: Loader kernel.elf
 
 .PHONY: clean clean_kernel clean_loader
 clean: clean_kernel clean_loader
@@ -42,14 +45,13 @@ kernel.elf: $(KERN_MAKEFILE)
 # Build bootloader (Loader.efi)
 #----------------------------------------------------------
 .PHONY: Loader ovmf edk2tool
-Loader: Loader.efi
-Loader.efi: edk2tool $(EDK2_DIR)/edksetup.sh
+Loader: $(LOADER_EFI)
+$(LOADER_EFI): edk2tool $(EDK2_DIR)/edksetup.sh
 	rm -rf $(EDK2_DIR)/LoaderPkg
 	ln -s $(SOURCE_DIR)/bootloader $(EDK2_DIR)/LoaderPkg
 	WORKSPACE=$(EDK2_DIR) source $(EDK2_DIR)/edksetup.sh ;\
 		WORKSPACE=$(EDK2_DIR) build -p LoaderPkg/LoaderPkg.dsc -b DEBUG -a X64 -t CLANG38
-	cp ${EDK2_DIR}/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.efi ./Loader.efi
-	cp ${EDK2_DIR}/Build/LoaderX64/DEBUG_CLANG38/X64/Loader.debug ./Loader.debug
+
 
 # build EDK2 C-lang tools
 .PHONY: edk2tool
@@ -73,7 +75,7 @@ QEMU_COMMON=-device nec-usb-xhci,id=xhci \
 	  -monitor stdio 
 
 # create disk.img
-disk.img: Loader.efi kernel.elf 
+disk.img: Loader kernel.elf 
 	rm -rf $@
 	qemu-img create -f raw $@ 200M
 	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $@
@@ -81,7 +83,7 @@ disk.img: Loader.efi kernel.elf
 	sudo mount -o loop $@ ${QEMU_MOUNT}
 	sleep 0.5
 	sudo mkdir -p ${QEMU_MOUNT}/EFI/BOOT
-	sudo cp Loader.efi ${QEMU_MOUNT}/EFI/BOOT/BOOTX64.EFI
+	sudo cp $(LOADER_EFI) ${QEMU_MOUNT}/EFI/BOOT/BOOTX64.EFI
 	sudo cp kernel.elf ${QEMU_MOUNT}/
 	sleep 0.5
 	sudo umount ${QEMU_MOUNT}
@@ -89,10 +91,10 @@ disk.img: Loader.efi kernel.elf
 	rmdir ${QEMU_MOUNT}
 
 .PHONY: debug_fs
-debug_fs: Loader.efi kernel.elf
+debug_fs: $(LOADER_EFI) kernel.elf
 	mkdir -p $(QEMU_DEBUG)/EFI/BOOT
 	cp kernel.elf $(QEMU_DEBUG)/
-	cp Loader.efi $(QEMU_DEBUG)/EFI/BOOT/BOOTX64.EFI
+	cp $(LOADER_EFI) $(QEMU_DEBUG)/EFI/BOOT/BOOTX64.EFI
 
 .PHONY: run debug
 run: disk.img	
