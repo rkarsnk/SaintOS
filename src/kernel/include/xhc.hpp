@@ -2,9 +2,13 @@
 
 #include <error.hpp>
 #include <global.hpp>
+#include <interrupt.hpp>
 #include <logger.hpp>
 #include <mouse.hpp>
 #include <pci.hpp>
+
+#include <asmfunc.h>
+#include <cpufunc.hpp>
 
 #include <usb/device.hpp>
 #include <usb/memory.hpp>
@@ -12,6 +16,8 @@
 #include <usb/xhci/xhci.hpp>
 
 #include <usb/classdriver/mouse.hpp>
+
+//extern usb::xhci::Controller* xhc;
 
 void SwitchEhci2Xhci(const pci::Device& xhc_dev);
 void xhc_init();

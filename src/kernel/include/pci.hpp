@@ -13,63 +13,7 @@ PCIバス制御プログラム
 
 #include <pcidevs.h>
 
-/* ---------------------------------------------------------------------------
-CONFIG_ADDRESSレジスタ:
-| 31|30  -   24|23  -  16|15    -   11|10     -     8|7     -      2|  1| 0 |
-|   | Reserved | Bus No. | Device No. | Fucntion No. | Register No. | 0 | 0 |
-  ^
-  | Enable bit (1 = enabled, 0 = disabled)
-                                   ref) PCI Local Bus Specification Rev.3.0 P.50
-  -----------------------------------------------------------------------------*/
-
-/* PCI Configuration spaces offset */
-#define PCIR_VENDOR_AND_DEVICE_ID 0x00  //32bits
-#define PCIR_VENDOR_ID 0x00             //16bits, Vendor ID
-#define PCIR_DEVICE_ID 0x02             //16bits, Device ID
-#define PCIR_COMMAND_AND_STATUS 0x04    //32bits
-#define PCIR_COMMAND 0x04               //16bits, PCI Command
-#define PCIR_STATUS 0x06                //16bits, PCI Status
-#define PCIR_CLASSCODE 0x08             //32bits
-#define PCIR_REVISION_ID 0x08           //8bits, Revision ID
-#define PCIR_CLASS_INTERFACE 0x09       //8bits, Programming Interfaces
-#define PCIR_SUB_CLASS 0x0A             //8bits, Device sub class
-#define PCIR_BASE_CLASS 0x0B            //8bits, Device base class
-#define PCIR_CACHE_LINE_SIZE 0x0C       //8bits, Cache Line Size
-#define PCIR_LATENCY_TIMER 0x0D         //8bits, Latency Timer
-#define PCIR_HEADER_TYPE 0x0E           //8bits
-#define PCIR_BIST 0x0F                  //8bits
-#define PCIR_BAR0 0x10                  //32bits, Base Address Register
-#define PCIR_BAR1 0x14                  //32bits
-#define PCIR_BAR2 0x18                  //32bits
-#define PCIR_BAR3 0x1C                  //32bits
-#define PCIR_BAR4 0x20                  //32bits
-#define PCIR_BAR5 0x24                  //32bits
-
-/* PCI Header Type */
-#define PCI_HEADER_TYPE_MASK 0x7f  //PCI header type mask
-#define PCI_HEADER_TYPE_NORMAL 0   //PCI header type 0
-#define PCI_HEADER_TYPE_BRIDGE 1   //PCI header type 1 bridge
-#define PCI_HEADER_TYPE_CARDBUS 2  //PCI header type 2 cardbus
-
-/* Header type 1 (PCI-to-PCI bridges) */
-#define PCI_BUS_NO 0x18            //Primary and Secondary bus number
-#define _PCI_PRIMARY_BUS 0x18      // Primary bus number
-#define _PCI_SECONDARY_BUS 0x19    // Secondary bus number
-#define _PCI_SUBORDINATE_BUS 0x1a  // Highest bus number behind the bridge
-
-#define PCI_CONF_PORT 0x0cf8
-#define PCI_DATA_PORT 0x0cfc
-
 namespace pci {
-  /*------------------------------------------------
-  PC/ATでは，
-   - CF8h : CONFIG_BASEADDRESS
-   - CFCh : CONFIG_DATA
-   refer to PCI Local Bus Specification Rev.3.0 P50
-  -------------------------------------------------*/
-  const uint16_t kConfigAddress = 0x0cf8;
-  const uint16_t kConfigData = 0x0cfc;
-
   struct ClassCode {
     uint8_t base, sub, interface;
 
@@ -123,11 +67,71 @@ namespace pci {
 
   Error ScanAllBus();
 
-  constexpr uint8_t CalcBarAddress(unsigned int bar_index) {
+  constexpr uint8_t CalcBarAddress(uint bar_index) {
     return PCIR_BAR0 + (4 * bar_index);
   }
 
-  WithError<uint64_t> ReadBar(Device& device, unsigned int bar_index);
+  WithError<uint64_t> ReadBar(Device& device, uint bar_index);
+
+  /* PCI Capability Register の共通ヘッダ */
+  union CapabilityHeader {
+    uint32_t data;
+    struct {
+      uint32_t cap_id   : 8;
+      uint32_t next_ptr : 8;
+      uint32_t cap      : 16;
+    } __packed bits;
+  } __packed;
+
+  const uint8_t kCapabilityMSI  = 0x05;
+  const uint8_t kCapabilityMSIX = 0x11;
+
+  CapabilityHeader ReadCapabilityHeader(const Device& dev, uint8_t addr);
+
+  /* MSI Cabability 構造 */
+  struct MSICapability {
+    union {
+      uint32_t data;
+      struct {
+        uint32_t cap_id                  : 8;  //08
+        uint32_t next_ptr                : 8;  //16
+        uint32_t msi_enable              : 1;  //17
+        uint32_t multi_msg_capable       : 3;  //20
+        uint32_t multi_msg_enable        : 3;  //23
+        uint32_t addr_64_capable         : 1;  //24
+        uint32_t per_vector_mask_capable : 1;  //25
+        uint32_t                         : 7;  //32
+      } __packed bits;
+    } __packed header;
+
+    uint32_t msg_addr;        //
+    uint32_t msg_upper_addr;  //
+    uint32_t msg_data;        //
+    uint32_t mask_bits;       //
+    uint32_t pending_bits;    //
+  } __packed;
+
+  Error ConfigureMSI(const Device& dev, uint32_t msg_addr, uint32_t msg_data,
+                     uint num_vector_component);
+
+  enum class MSITriggerMode {
+    kEdge  = 0,  //0
+    kLevel = 1   //1
+  };
+
+  enum class MSIDeliveryMode {
+    kFixed          = 0b000,
+    kLowestPriority = 0b001,
+    kSMI            = 0b010,
+    kNMI            = 0b100,
+    kINIT           = 0b101,
+    kExtINT         = 0b111,
+  };
+
+  Error ConfigureMSIFixedDestination(const Device& dev, uint8_t apic_id,
+                                     MSITriggerMode trigger_mode,
+                                     MSIDeliveryMode delivery_mode,
+                                     uint8_t vector, uint num_vector_exponent);
 }  // namespace pci
 
-void pci_init();
+void pci_scan();

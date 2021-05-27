@@ -25,7 +25,8 @@ class Error {
     kInvalidPhase,
     kUnknownXHCISpeedID,
     kNoWaiter,
-    kLastOfCode,  //最後に配置
+    kNoPCIMSI,
+    kLastOfCode,  //この列挙子は最後に配置する
   };
 
  private:

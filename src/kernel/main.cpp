@@ -10,6 +10,7 @@
 #include <framebuffer.hpp>  //フレームバッファ初期化
 #include <global.hpp>       //グローバル変数
 #include <graphics.hpp>     //PixelWriterクラス
+#include <interrupt.hpp>    //割込み
 #include <logger.hpp>       //log関数
 #include <mouse.hpp>        //Mouseクラス
 #include <operator.hpp>     //配置new
@@ -20,7 +21,7 @@
 #include <frame_buffer_config.h>
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
-  SetLogLevel(kInfo);
+  SetLogLevel(kDebug);
   /*フレームバッファを初期化*/
   framebuffer_init(frame_buffer_config, {0x00, 0x00, 0x00});
 
@@ -28,7 +29,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
   mouse_cursor_init();
 
-  pci_init();
+  pci_scan();
 
   xhc_init();
 
