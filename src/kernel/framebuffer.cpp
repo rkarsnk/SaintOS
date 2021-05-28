@@ -1,5 +1,8 @@
 #include <framebuffer.hpp>
 
+char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
+PixelWriter* pixel_writer;
+
 void framebuffer_init(const FrameBufferConfig& config,
                       const PixelColor& color) {
   switch (config.pixel_format) {

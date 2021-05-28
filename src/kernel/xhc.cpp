@@ -5,7 +5,7 @@
  */
 usb::xhci::Controller* xhc;
 
-__attribute__((interrupt)) void IntHandlerXHCI(InterruptFrame* frame) {
+__attribute__((interrupt)) void IntHandlerXHCI(IntrFrame* frame) {
   while (xhc->PrimaryEventRing()->HasFront()) {
     /*- 注意 -------------------------------------------------------
       C++のADL(実引数依存の名前検索)のおかげで ProcessEvent() と書けるが、
@@ -39,7 +39,7 @@ void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
   pci::WriteConfReg(xhc_dev, 0xd8, superspeed_ports);           // USB3_PSSEN
   uint32_t ehci2xhci_ports = pci::ReadConfReg(xhc_dev, 0xd4);   // XUSB2PRM
   pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports);            // XUSB2PR
-  Log(kDebug, "SwitchEhci2Xhci: SS = %02x, xHCI = %02x\n", superspeed_ports,
+  Log(kInfo, "SwitchEhci2Xhci: SS = %02x, xHCI = %02x\n", superspeed_ports,
       ehci2xhci_ports);
 }
 
@@ -77,43 +77,43 @@ void xhc_init() {
     IDTをロード
   -----------------------------------------------------------*/
   const uint16_t cs = GetCS();
-  Log(kDebug, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
-  Log(kDebug,
-      "[DEBUG] _Z20InterruptHandlerXHCIP14InterruptFrame: 0x00104dc0\n");
-  Log(kDebug, "[DEBUG] InterruptHandlerXHCI: 0x%08x\n",
+  Log(kInfo, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
+  Log(kInfo, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
       reinterpret_cast<uint64_t>(IntHandlerXHCI));
 
-  SetIDTEntry(idt[InterruptVector::kXHCI],
-              MakeIDTAttr(DescriptorType::kInterruptGate, 0),
+  SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
               reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
-  Log(kDebug, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
+  Log(kInfo, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
       sizeof(idt) / 16);
-  Log(kDebug, "[DEBUG] &idt[0]: 0x%08x\n",
-      reinterpret_cast<uintptr_t>(&idt[0]));
+  Log(kInfo, "[DEBUG] &idt[0]: 0x%08x\n", reinterpret_cast<uintptr_t>(&idt[0]));
+  Log(kInfo, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
+      reinterpret_cast<uintptr_t>(&idt[IntrVector::kXHCI]));
+  Log(kInfo, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
+      idt[IntrVector::kXHCI].offset_middle, idt[IntrVector::kXHCI].offset_low);
   LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
 
   /*-----------------------------------------------------------
     MSIを設定
   -----------------------------------------------------------*/
   const uint8_t bsp_local_apic_id =
-      *reinterpret_cast<const uint32_t*>(0xfee00020) >> 24;
+      *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
 
-  Log(kDebug, "[DEBUG] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
-  Log(kDebug, "[DEBUG] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
+  Log(kInfo, "[DEBUG] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
+  Log(kInfo, "[DEBUG] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
       pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed,
-      InterruptVector::kXHCI);
+      IntrVector::kXHCI);
 
   pci::ConfigureMSIFixedDestination(
       *xhc_dev, bsp_local_apic_id, pci::MSITriggerMode::kLevel,
-      pci::MSIDeliveryMode::kFixed, InterruptVector::kXHCI, 0);
+      pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI, 0);
 
   /*--------------------------------------------------------------
     xHCのベースアドレスレジスタの読み取り
   --------------------------------------------------------------*/
   const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
-  Log(kDebug, "ReadBar: %s\n", xhc_bar.error.Name());
+  Log(kInfo, "ReadBar: %s\n", xhc_bar.error.Name());
   const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
-  Log(kDebug, "xHC MMI/O base address: %08lx\n", xhc_mmio_base);
+  Log(kInfo, "xHC MMI/O base address: %08lx\n", xhc_mmio_base);
 
   /*-------------------------------------------------------------
     xHCIコントローラを制御するためのクラスのインスタンス生成
@@ -132,7 +132,7 @@ void xhc_init() {
   -------------------------------------------------------------*/
   {
     auto err = xhc.Initialize();
-    Log(kDebug, "xhc.Intialize: %s\n", err.Name());
+    Log(kInfo, "xhc.Intialize: %s\n", err.Name());
   }
   /*-------------------------------------------------------------
     xHCの起動
@@ -147,7 +147,7 @@ void xhc_init() {
 
   for (int i = 1; i <= xhc.MaxPorts(); ++i) {
     auto port = xhc.PortAt(i);
-    Log(kDebug, "Port %d: IsConnected=%d\n", i, port.IsConnected());
+    Log(kInfo, "Port %d: IsConnected=%d\n", i, port.IsConnected());
 
     if (port.IsConnected()) {
       /*- 注意 -------------------------------------------------------

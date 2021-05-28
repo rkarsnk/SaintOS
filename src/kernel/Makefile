@@ -1,5 +1,5 @@
 TARGET = kernel.elf
-OBJS = main.o font.o framebuffer.o operator.o global.o printk.o logger.o \
+OBJS = main.o font.o framebuffer.o operator.o printk.o logger.o \
 	   c_graphics.o c_console.o c_mouse.o \
 	   pci.o xhc.o interrupt.o\
 	   hankaku.o \

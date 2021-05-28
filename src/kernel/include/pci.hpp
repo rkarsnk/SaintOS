@@ -13,6 +13,8 @@ PCIバス制御プログラム
 
 #include <pcidevs.h>
 
+#define LAPIC_ID_REG 0xfee00020  //Local APIC ID Register
+
 namespace pci {
   struct ClassCode {
     uint8_t base, sub, interface;

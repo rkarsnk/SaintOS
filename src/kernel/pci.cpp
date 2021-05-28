@@ -130,7 +130,7 @@ namespace {
 
   /* 指定されたMSIレジスタを設定する */
   Error ConfigureMSIRegister(const Device& dev, uint8_t cap_addr,
-                             uint32_t msg_addr, uint32_t mas_data,
+                             uint32_t msg_addr, uint32_t msg_data,
                              uint num_vector_exponent) {
     auto msi_cap = ReadMSICapability(dev, cap_addr);
 
@@ -144,8 +144,9 @@ namespace {
     msi_cap.header.bits.msi_enable = 1;
 
     msi_cap.msg_addr = msg_addr;
-    msi_cap.msg_data = msg_addr;
-
+    msi_cap.msg_data = msg_data;
+    Log(kInfo, "[DEBUG] Message Address = %08x, Message Data = %08x\n",
+        msg_addr, msg_data);
     WriteMSICapability(dev, cap_addr, msi_cap);
     return MAKE_ERROR(Error::kSuccess);
   }
@@ -309,7 +310,7 @@ namespace pci {
                                      MSITriggerMode trigger_mode,
                                      MSIDeliveryMode delivery_mode,
                                      uint8_t vector, uint num_vector_exponent) {
-    uint32_t msg_addr = 0xfee00000u | (apic_id << 12);
+    uint32_t msg_addr = 0xfee00000u | (apic_id << 12);  //set Destination ID
     uint32_t msg_data = (static_cast<uint32_t>(delivery_mode) << 8) | vector;
     if (trigger_mode == MSITriggerMode::kLevel) {
       msg_data |= 0xc000;

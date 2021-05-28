@@ -8,7 +8,6 @@
 #include <cpufunc.hpp>      //アセンブラ
 #include <font.hpp>         //WriteAscii
 #include <framebuffer.hpp>  //フレームバッファ初期化
-#include <global.hpp>       //グローバル変数
 #include <graphics.hpp>     //PixelWriterクラス
 #include <interrupt.hpp>    //割込み
 #include <logger.hpp>       //log関数
@@ -21,7 +20,7 @@
 #include <frame_buffer_config.h>
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
-  SetLogLevel(kDebug);
+  SetLogLevel(kInfo);
   /*フレームバッファを初期化*/
   framebuffer_init(frame_buffer_config, {0x00, 0x00, 0x00});
 

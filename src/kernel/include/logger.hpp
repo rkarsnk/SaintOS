@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstdio>
-#include <global.hpp>
+
+#include <console.hpp>
 
 enum LogLevel {
   kError = 3,

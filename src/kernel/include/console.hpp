@@ -4,6 +4,7 @@
 #include <new>
 
 #include <font.hpp>
+#include <framebuffer.hpp>
 #include <graphics.hpp>
 #include <printk.hpp>
 

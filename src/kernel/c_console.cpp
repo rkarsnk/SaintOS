@@ -47,8 +47,8 @@ void Console::NewLine() {
   }
 }
 
-extern char console_buf[sizeof(Console)];
-extern Console* console;
+char console_buf[sizeof(Console)];
+Console* console;
 
 void console_init() {
   /*
