@@ -1,5 +1,27 @@
 #include <xhc.hpp>
 
+/**
+ * XHCI用割り込みハンドラ 
+ */
+struct Message {
+  enum Type {
+    kInterruptXHCI,
+  } type;
+};
+
+ArrayQueue<Message>* main_queue;
+
+usb::xhci::Controller* xhc;
+
+__attribute__((interrupt)) //割込みハンドラ
+void IntHandlerXHCI(IntrFrame* frame) {
+  main_queue->Push(Message{Message::kInterruptXHCI});
+  NotifyEndOfInterrupt();
+}
+
+/**
+ * Intel Panther Point チップ対応
+ */
 void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
   bool intel_ehc_exist = false;
   for (int i = 0; i < pci::num_device; ++i) {
@@ -17,7 +39,7 @@ void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
   pci::WriteConfReg(xhc_dev, 0xd8, superspeed_ports);           // USB3_PSSEN
   uint32_t ehci2xhci_ports = pci::ReadConfReg(xhc_dev, 0xd4);   // XUSB2PRM
   pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports);            // XUSB2PR
-  Log(kDebug, "SwitchEhci2Xhci: SS = %02, xHCI = %02x\n", superspeed_ports,
+  Log(kInfo, "SwitchEhci2Xhci: SS = %02x, xHCI = %02x\n", superspeed_ports,
       ehci2xhci_ports);
 }
 
@@ -51,13 +73,47 @@ void xhc_init() {
         xhc_dev->device_id);
   }
 
+  /*-----------------------------------------------------------
+    IDTをロード
+  -----------------------------------------------------------*/
+  const uint16_t cs = GetCS();
+  Log(kInfo, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
+  Log(kInfo, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
+      reinterpret_cast<uint64_t>(IntHandlerXHCI));
+
+  SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
+              reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
+  Log(kInfo, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
+      sizeof(idt) / 16);
+  Log(kInfo, "[DEBUG] &idt[0]: 0x%08x\n", reinterpret_cast<uintptr_t>(&idt[0]));
+  Log(kInfo, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
+      reinterpret_cast<uintptr_t>(&idt[IntrVector::kXHCI]));
+  Log(kInfo, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
+      idt[IntrVector::kXHCI].offset_middle, idt[IntrVector::kXHCI].offset_low);
+  LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
+
+  /*-----------------------------------------------------------
+    MSIを設定
+  -----------------------------------------------------------*/
+  const uint8_t bsp_local_apic_id =
+      *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
+
+  Log(kInfo, "[DEBUG] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
+  Log(kInfo, "[DEBUG] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
+      pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed,
+      IntrVector::kXHCI);
+
+  pci::ConfigureMSIFixedDestination(
+      *xhc_dev, bsp_local_apic_id, pci::MSITriggerMode::kLevel,
+      pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI, 0);
+
   /*--------------------------------------------------------------
     xHCのベースアドレスレジスタの読み取り
   --------------------------------------------------------------*/
   const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
-  Log(kDebug, "ReadBar: %s\n", xhc_bar.error.Name());
+  Log(kInfo, "ReadBar: %s\n", xhc_bar.error.Name());
   const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
-  Log(kDebug, "xHC MMI/O base address: %08lx\n", xhc_mmio_base);
+  Log(kInfo, "xHC MMI/O base address: %08lx\n", xhc_mmio_base);
 
   /*-------------------------------------------------------------
     xHCIコントローラを制御するためのクラスのインスタンス生成
@@ -74,21 +130,23 @@ void xhc_init() {
   /*-------------------------------------------------------------
     xHCの初期化(xHCの動作に必要な設定を実施)
   -------------------------------------------------------------*/
-  auto err = xhc.Initialize();
-  Log(kDebug, "xhc.Intialize: %s\n", err.Name());
-
+  {
+    auto err = xhc.Initialize();
+    Log(kInfo, "xhc.Intialize: %s\n", err.Name());
+  }
   /*-------------------------------------------------------------
     xHCの起動
   -------------------------------------------------------------*/
   Log(kInfo, "xHC starting.\n");
   xhc.Run();
 
+  ::xhc = &xhc;
+
   usb::HIDMouseDriver::default_observer = MouseObserver;
 
-  /*  */
   for (int i = 1; i <= xhc.MaxPorts(); ++i) {
     auto port = xhc.PortAt(i);
-    Log(kDebug, "Port %d: IsConnected=%d\n", i, port.IsConnected());
+    Log(kInfo, "Port %d: IsConnected=%d\n", i, port.IsConnected());
 
     if (port.IsConnected()) {
       /*- 注意 -------------------------------------------------------
@@ -102,16 +160,34 @@ void xhc_init() {
       }
     }
   }
+  std::array<Message, 32> main_queue_data;
+  ArrayQueue<Message> main_queue{main_queue_data};
 
-  /* xHCに溜まったイベントを処理する(ポーリング) */
-  while (1) {
-    /*- 注意 -------------------------------------------------------
-      C++のADL(実引数依存の名前検索)のおかげで ProcessEvent() と書けるが、
-      以下では、名前空間 usb::xhci:: を明示しておくこととする 
-    --------------------------------------------------------------*/
-    if (auto err = usb::xhci::ProcessEvent(xhc)) {
-      Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(),
-          err.File(), err.Line());
+  ::main_queue = &main_queue;
+
+  while (true) {
+    __asm__("cli");
+    if (main_queue.Count() == 0) {
+      __asm__("sti\n\thlt");
+      continue;
+    }
+
+    Message msg = main_queue.Front();
+    main_queue.Pop();
+    __asm__("sti");
+
+    switch (msg.type) {
+      case Message::kInterruptXHCI:
+        while (xhc.PrimaryEventRing()->HasFront()) {
+          if (auto err = usb::xhci::ProcessEvent(xhc)) {
+            Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(),
+                err.File(), err.Line());
+          }
+        }
+        break;
+
+      default:
+        Log(kError, "Unknown message type: %d\n", msg.type);
     }
   }
 }
@@ -121,6 +197,5 @@ void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
 }
 
 extern "C" void __cxa_pure_virtual() {
-  while (1)
-    __asm__("hlt");
+  halt();
 }

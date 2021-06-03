@@ -1,10 +1,14 @@
 #pragma once
 
 #include <error.hpp>
-#include <global.hpp>
+#include <interrupt.hpp>
 #include <logger.hpp>
 #include <mouse.hpp>
 #include <pci.hpp>
+
+#include <asmfunc.h>
+#include <cpufunc.hpp>
+#include <queue.hpp>
 
 #include <usb/device.hpp>
 #include <usb/memory.hpp>

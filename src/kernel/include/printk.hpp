@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdio>
-#include <global.hpp>
+
+#include <console.hpp>
 
 int printk(const char* format, ...);

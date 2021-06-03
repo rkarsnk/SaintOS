@@ -8,8 +8,8 @@
 #include <cpufunc.hpp>      //アセンブラ
 #include <font.hpp>         //WriteAscii
 #include <framebuffer.hpp>  //フレームバッファ初期化
-#include <global.hpp>       //グローバル変数
 #include <graphics.hpp>     //PixelWriterクラス
+#include <interrupt.hpp>    //割込み
 #include <logger.hpp>       //log関数
 #include <mouse.hpp>        //Mouseクラス
 #include <operator.hpp>     //配置new
@@ -28,7 +28,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
   mouse_cursor_init();
 
-  pci_init();
+  pci_scan();
 
   xhc_init();
 

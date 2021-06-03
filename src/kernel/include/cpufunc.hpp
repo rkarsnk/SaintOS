@@ -39,3 +39,15 @@ static __inline void halt() {
   while (1)
     __asm__("hlt");
 }
+
+/*
+static __inline uint16_t GetCS(void) {
+  uint16_t cs;
+  __asm __volatile("xor eax, eax;", "mov ax, cs;", "ret");
+//  global GetCS ; uint16_t GetCS(void);
+//  GetCS:
+//      xor eax, eax; also clears uppper 32bits of rax
+//      mov ax, cs
+//      ret
+}
+*/
