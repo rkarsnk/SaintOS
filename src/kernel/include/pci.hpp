@@ -38,8 +38,6 @@ namespace pci {
     ClassCode class_code;
   };
 
-  void pci_cfg_test();
-
   void WritePciConfigAddress(uint32_t address);
   void WritePciConfigData(uint32_t value);
 
@@ -57,13 +55,13 @@ namespace pci {
   }
 
   uint32_t ReadConfReg(const Device& dev, uint8_t reg_addr);
-
   void WriteConfReg(const Device& dev, uint8_t reg_addr, uint32_t value);
 
   uint32_t ReadBusNumbers(uint8_t bus, uint8_t device, uint8_t function);
 
   bool IsSingleFunctionDevice(uint8_t header_type);
 
+  /* PCI Device構造体配列 */
   inline std::array<Device, 32> devices;
   inline int num_device;
 

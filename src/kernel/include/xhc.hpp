@@ -8,6 +8,7 @@
 
 #include <asmfunc.h>
 #include <cpufunc.hpp>
+#include <queue.hpp>
 
 #include <usb/device.hpp>
 #include <usb/memory.hpp>

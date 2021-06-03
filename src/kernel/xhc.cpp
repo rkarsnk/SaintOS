@@ -3,19 +3,19 @@
 /**
  * XHCI用割り込みハンドラ 
  */
+struct Message {
+  enum Type {
+    kInterruptXHCI,
+  } type;
+};
+
+ArrayQueue<Message>* main_queue;
+
 usb::xhci::Controller* xhc;
 
-__attribute__((interrupt)) void IntHandlerXHCI(IntrFrame* frame) {
-  while (xhc->PrimaryEventRing()->HasFront()) {
-    /*- 注意 -------------------------------------------------------
-      C++のADL(実引数依存の名前検索)のおかげで ProcessEvent() と書けるが、
-      以下では、名前空間 usb::xhci:: を明示しておくこととする 
-    --------------------------------------------------------------*/
-    if (auto err = usb::xhci::ProcessEvent(*xhc)) {
-      Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(),
-          err.File(), err.Line());
-    }
-  }
+__attribute__((interrupt)) //割込みハンドラ
+void IntHandlerXHCI(IntrFrame* frame) {
+  main_queue->Push(Message{Message::kInterruptXHCI});
   NotifyEndOfInterrupt();
 }
 
@@ -141,7 +141,6 @@ void xhc_init() {
   xhc.Run();
 
   ::xhc = &xhc;
-  __asm__("sti");
 
   usb::HIDMouseDriver::default_observer = MouseObserver;
 
@@ -161,8 +160,36 @@ void xhc_init() {
       }
     }
   }
+  std::array<Message, 32> main_queue_data;
+  ArrayQueue<Message> main_queue{main_queue_data};
 
-  halt();
+  ::main_queue = &main_queue;
+
+  while (true) {
+    __asm__("cli");
+    if (main_queue.Count() == 0) {
+      __asm__("sti\n\thlt");
+      continue;
+    }
+
+    Message msg = main_queue.Front();
+    main_queue.Pop();
+    __asm__("sti");
+
+    switch (msg.type) {
+      case Message::kInterruptXHCI:
+        while (xhc.PrimaryEventRing()->HasFront()) {
+          if (auto err = usb::xhci::ProcessEvent(xhc)) {
+            Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(),
+                err.File(), err.Line());
+          }
+        }
+        break;
+
+      default:
+        Log(kError, "Unknown message type: %d\n", msg.type);
+    }
+  }
 }
 
 void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
