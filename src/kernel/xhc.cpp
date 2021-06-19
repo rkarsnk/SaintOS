@@ -67,9 +67,9 @@ void xhc_init() {
     検出したxHCの情報を表示.
   -----------------------------------------------------------*/
   if (xhc_dev) {
-    Log(kInfo, "xHC has been found: %02d:%02d:%d ", xhc_dev->bus,
+    Log(kInfo, "[XHCI_INFO] xHC has been found: %02d:%02d:%d\n", xhc_dev->bus,
         xhc_dev->device, xhc_dev->function);
-    Log(kInfo, "xHC vendor:%04x, device:%04x\n", xhc_dev->vendor_id,
+    Log(kInfo, "[XHCI_INFO] xHC vendor:%04x, device:%04x\n", xhc_dev->vendor_id,
         xhc_dev->device_id);
   }
 
@@ -77,18 +77,19 @@ void xhc_init() {
     IDTをロード
   -----------------------------------------------------------*/
   const uint16_t cs = GetCS();
-  Log(kInfo, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
-  Log(kInfo, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
+  Log(kDebug, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
+  Log(kDebug, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
       reinterpret_cast<uint64_t>(IntHandlerXHCI));
 
   SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
               reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
-  Log(kInfo, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
+  Log(kDebug, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
       sizeof(idt) / 16);
-  Log(kInfo, "[DEBUG] &idt[0]: 0x%08x\n", reinterpret_cast<uintptr_t>(&idt[0]));
-  Log(kInfo, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
+  Log(kDebug, "[DEBUG] &idt[0]: 0x%08x\n",
+      reinterpret_cast<uintptr_t>(&idt[0]));
+  Log(kDebug, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
       reinterpret_cast<uintptr_t>(&idt[IntrVector::kXHCI]));
-  Log(kInfo, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
+  Log(kDebug, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
       idt[IntrVector::kXHCI].offset_middle, idt[IntrVector::kXHCI].offset_low);
   LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
 
@@ -98,8 +99,8 @@ void xhc_init() {
   const uint8_t bsp_local_apic_id =
       *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
 
-  Log(kInfo, "[DEBUG] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
-  Log(kInfo, "[DEBUG] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
+  Log(kInfo, "[INFO] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
+  Log(kInfo, "[INFO] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
       pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed,
       IntrVector::kXHCI);
 
@@ -111,9 +112,9 @@ void xhc_init() {
     xHCのベースアドレスレジスタの読み取り
   --------------------------------------------------------------*/
   const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
-  Log(kInfo, "ReadBar: %s\n", xhc_bar.error.Name());
+  Log(kInfo, "[XHCI INFO] ReadBar: %s\n", xhc_bar.error.Name());
   const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
-  Log(kInfo, "xHC MMI/O base address: %08lx\n", xhc_mmio_base);
+  Log(kInfo, "[XHCI INFO] xHC MMI/O base address: %08lx\n", xhc_mmio_base);
 
   /*-------------------------------------------------------------
     xHCIコントローラを制御するためのクラスのインスタンス生成
@@ -132,12 +133,12 @@ void xhc_init() {
   -------------------------------------------------------------*/
   {
     auto err = xhc.Initialize();
-    Log(kInfo, "xhc.Intialize: %s\n", err.Name());
+    Log(kInfo, "[XHCI INFO] xhc.Intialize: %s\n", err.Name());
   }
   /*-------------------------------------------------------------
     xHCの起動
   -------------------------------------------------------------*/
-  Log(kInfo, "xHC starting.\n");
+  Log(kInfo, "[XHCI INFO] xHC starting.\n");
   xhc.Run();
 
   ::xhc = &xhc;

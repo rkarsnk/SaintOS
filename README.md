@@ -81,3 +81,4 @@ make run
 - EDK II, https://github.com/tianocore/edk2
 - UEFI Specifications Ver2.8B, https://uefi.org/specifications/
 - フルスクラッチで作る!UEFIベアメタルプログラミング, http://yuma.ohgami.jp/UEFI-Bare-Metal-Programming/index.html
+- C++日本語リファレンス, https://cpprefjp.github.io/

@@ -61,6 +61,6 @@ void console_init() {
 
   printk("Hello. SaintOS World.\n");
 
-  printk("Console Format:%d rows * %d columns.\n", console->ttyRows,
-         console->ttyColumns);
+  Log(kInfo, "[INFO] Console Format:%d rows * %d columns.\n", console->ttyRows,
+      console->ttyColumns);
 }
