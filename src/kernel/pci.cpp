@@ -322,7 +322,7 @@ namespace pci {
 
 void pci_scan() {
   auto err = pci::ScanAllBus();
-  Log(kInfo, "ScanAllBus: %s\n", err.Name());
+  Log(kInfo, "[INFO] ScanAllBus: %s\n", err.Name());
 
   for (int i = 0; i < pci::num_device; ++i) {
     const auto& dev = pci::devices[i];
@@ -330,7 +330,8 @@ void pci_scan() {
     auto device_id  = pci::ReadDeviceId(dev.bus, dev.device, dev.function);
     auto class_code = pci::ReadClassCode(dev.bus, dev.device, dev.function);
     Log(kInfo,
-        "%02d:%02d:%d: vendor:%04x, device:%04x, class:%08x, head %02x\n",
+        "[PCI_INFO] %02d:%02d:%d: vendor:%04x, device:%04x, class:%08x, head "
+        "%02x\n",
         dev.bus, dev.device, dev.function, vendor_id, device_id, class_code,
         dev.header_type);
   }

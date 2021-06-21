@@ -15,11 +15,11 @@
 
 #include "loader_internal.h"
 
-#define LEN_OF_KERNFILENAME 12    // "\kernel.elf" を含む12文字
-#define KERN_BASE_ADDR 0x100000;  // kernel base address
-#define UEFI_PAGE_SIZE 0x1000     // UEFI Page size 4KiB
-#define ENTRY_POINT_OFFSET 24     // ELF形式のENTRYPOINT Offset
-#define FRAME_BUFFER_COLOR 255    // FrameBuffer Color white
+#define LEN_OF_KERNFILENAME 12         // "\kernel.elf" を含む12文字
+#define KERN_BASE_ADDR      0x100000;  // kernel base address
+#define UEFI_PAGE_SIZE      0x1000     // UEFI Page size 4KiB
+#define ENTRY_POINT_OFFSET  24         // ELF形式のENTRYPOINT Offset
+#define FRAME_BUFFER_COLOR  255        // FrameBuffer Color white
 
 void Stall() {
   gBS->Stall(500000);  // 0.5秒処理を遅らせる
@@ -148,7 +148,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   /* メモリマップの取得 */
   CHAR8 memmap_buffer[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buffer), memmap_buffer, 0, 0, 0, 0};
-  status = GetMemoryMap(&memmap);
+  status                  = GetMemoryMap(&memmap);
   if (EFI_ERROR(status)) {
     PrintInfo(ERROR, L"failed to get memory map: %r\n", status);
     Halt();
@@ -253,7 +253,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   2.カーネルELFファイルの内容をkernel_bufferに読み出す
   --------------------------------------------------------*/
   EFI_FILE_INFO *kernel_elf_info = (EFI_FILE_INFO *)file_info_buffer;
-  UINTN kernel_elf_size = kernel_elf_info->FileSize;
+  UINTN kernel_elf_size          = kernel_elf_info->FileSize;
 
   VOID *kernel_buffer;
   status = gBS->AllocatePool(EfiLoaderData, kernel_elf_size, &kernel_buffer);
@@ -332,9 +332,10 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     }
   }
 
-  typedef void EntryPointType(const struct FrameBufferConfig *);
+  typedef void EntryPointType(const struct FrameBufferConfig *,
+                              const struct MemoryMap *);
   EntryPointType *entry_point = (EntryPointType *)entry_addr;
-  entry_point(&config);
+  entry_point(&config, &memmap);
 
   Print(L"All done\n");
 

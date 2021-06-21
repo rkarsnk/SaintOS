@@ -6,6 +6,7 @@
 #include <font.hpp>
 #include <framebuffer.hpp>
 #include <graphics.hpp>
+#include <logger.hpp>
 #include <printk.hpp>
 
 class Console {
