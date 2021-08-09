@@ -1,11 +1,11 @@
 TARGET = kernel.elf
 OBJS = main.o font.o framebuffer.o operator.o printk.o logger.o \
+	   lib/newlib_support.o lib/libcxx_support.o \
 	   c_graphics.o c_console.o c_mouse.o \
 	   pci.o xhc.o interrupt.o segment.o pageing.o mmgr.o\
 	   hankaku.o \
 	   asmfunc.o \
 	   kernel_entry.o \
-	   lib/newlib_support.o lib/libcxx_support.o \
 	   usb/memory.o usb/device.o \
 	   usb/xhci/ring.o usb/xhci/trb.o usb/xhci/xhci.o \
        usb/xhci/port.o usb/xhci/device.o usb/xhci/devmgr.o usb/xhci/registers.o \
@@ -40,7 +40,7 @@ clean:
 	rm -rf $(OBJS) .*.d *.bin kernel.elf
 
 kernel.elf: $(OBJS) Makefile
-	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS) -lc -lc++
+	ld.lld $(LDFLAGS)  -o kernel.elf $(OBJS) -lc -lc++ -lc++abi
 
 %.o: %.cpp Makefile
 	clang++ $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@

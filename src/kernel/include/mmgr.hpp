@@ -2,6 +2,7 @@
 
 #include <array>
 #include <limits>
+#include <sys/types.h>
 
 #include <error.hpp>
 
@@ -64,6 +65,8 @@ class BitmapMemoryManager {
   bool GetBit(FrameID frame) const;
   void SetBit(FrameID frame, bool allocated);
 };
+
+Error InitilizeHeap(BitmapMemoryManager& memory_manager);
 
 extern char memory_manager_buf[sizeof(BitmapMemoryManager)];
 extern BitmapMemoryManager* memory_manager;

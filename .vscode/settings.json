@@ -7,4 +7,5 @@
     "terminal.integrated.fontFamily": "'Ricty Diminished Discord with-icons', monospace",
     "terminal.integrated.fontSize": 16,
     "C_Cpp.errorSquiggles": "Disabled",
+    "terminal.integrated.defaultLocation": "editor",
 }

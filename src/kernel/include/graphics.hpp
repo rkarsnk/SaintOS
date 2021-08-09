@@ -26,8 +26,7 @@ class PixelWriter {
    * コンストラクタ（インスタンスをメモリ上に構築する）
    * 引数で受け取ったフレームバッファ構成情報をメンバ変数のconfig_にコピーする
    */
-  PixelWriter(const FrameBufferConfig& config) : config_{config} {
-  }
+  PixelWriter(const FrameBufferConfig& config) : config_{ config } {}
   /**
    * ~PixelWrite()
    * デストラクタ （インスタンスをメモリ上から破棄する）

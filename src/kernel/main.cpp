@@ -5,7 +5,7 @@
  */
 
 // C++ header
-#include <asmfunc.h>
+#include <asmfunc.h>        //アセンブラ
 #include <console.hpp>      //Consoleクラス
 #include <cpufunc.hpp>      //アセンブラ
 #include <efi_memmap.hpp>   //UEFI MemoryMap
@@ -28,13 +28,18 @@
 
 alignas(16) uint8_t kernel_main_stack[1024 * 1024];
 
-extern "C" void KernelMainNewStack(
-    const FrameBufferConfig& frame_buffer_config_ref,
-    const MemoryMap& memory_map_ref) {
+/**
+ * KernelMainNewStack() 
+ * カーネル用スタック領域を持つカーネルメイン関数
+ *  - frame_buffer_config_ref
+ *  - memory_map_ref
+ */
+extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_ref,
+                                   const MemoryMap& memory_map_ref) {
   SetLogLevel(kInfo);
 
-  FrameBufferConfig frame_buffer_config{frame_buffer_config_ref};
-  MemoryMap memory_map{memory_map_ref};
+  FrameBufferConfig frame_buffer_config{ frame_buffer_config_ref };
+  MemoryMap memory_map{ memory_map_ref };
 
   uint32_t size_of_stack = sizeof(kernel_main_stack);
 
@@ -51,13 +56,12 @@ extern "C" void KernelMainNewStack(
 
   const auto memory_map_base = reinterpret_cast<uintptr_t>(memory_map.buffer);
   uintptr_t available_end    = 0;
-  for (uintptr_t iter = memory_map_base;
-       iter < memory_map_base + memory_map.map_size;
+  for (uintptr_t iter = memory_map_base; iter < memory_map_base + memory_map.map_size;
        iter += memory_map.descriptor_size) {
     auto desc = reinterpret_cast<const MemoryDescriptor*>(iter);
     if (available_end < desc->physical_start) {
       memory_manager->MarkAllocated(
-          FrameID{available_end / kBytesPerFrame},
+          FrameID{ available_end / kBytesPerFrame },
           (desc->physical_start - available_end) / kBytesPerFrame);
     }
 
@@ -68,20 +72,26 @@ extern "C" void KernelMainNewStack(
       available_end = physical_end;
     } else {
       memory_manager->MarkAllocated(
-          FrameID{desc->physical_start / kBytesPerFrame},
+          FrameID{ desc->physical_start / kBytesPerFrame },
           desc->number_of_pages * kUEFIPageSize / kBytesPerFrame);
     }
   }
-  memory_manager->SetMemoryRange(FrameID{1},
-                                 FrameID{available_end / kBytesPerFrame});
+  memory_manager->SetMemoryRange(FrameID{ 1 }, FrameID{ available_end / kBytesPerFrame });
+
+  if (auto err = InitilizeHeap(*memory_manager)) {
+    Log(kError, "failed to allocate pages: %s at %s:%d\n", err.Name(), err.File(),
+        err.Line());
+    exit(1);
+  }
+  //メモリマネージャの初期化終了
 
   /*フレームバッファを初期化*/
-  framebuffer_init(frame_buffer_config, {0x00, 0x00, 0x00});
+  framebuffer_init(frame_buffer_config, { 0x00, 0x00, 0x00 });
 
   console_init();
 
-  Log(kInfo, "[INFO] Kernel Stack begin: 0x%08x, length: %08x(%d)\n",
-      &kernel_main_stack, size_of_stack, size_of_stack);
+  Log(kInfo, "[INFO] Kernel Stack begin: 0x%08x, length: %08x(%d)\n", &kernel_main_stack,
+      size_of_stack, size_of_stack);
 
   mouse_cursor_init();
 
