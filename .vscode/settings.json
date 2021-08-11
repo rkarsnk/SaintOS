@@ -1,11 +1,17 @@
 {
-    "editor.formatOnSave": true,
     "editor.formatOnType": true,
-    "files.autoSave": "onFocusChange",
     "workbench.colorTheme": "Default Light+",
     "editor.fontFamily": "'Noto Mono','monospace', 'Ricty Diminished Discord with-icons', 'Droid Sans Fallback'",
     "terminal.integrated.fontFamily": "'Ricty Diminished Discord with-icons', monospace",
     "terminal.integrated.fontSize": 16,
     "C_Cpp.errorSquiggles": "Disabled",
     "terminal.integrated.defaultLocation": "editor",
+    "C_Cpp.clang_format_path": "/usr/bin/clang-format",
+    "files.associations": {
+        "array": "cpp",
+        "optional": "cpp"
+    },
+    "C_Cpp.default.intelliSenseMode": "linux-clang-x64",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.default.cppStandard": "c++17",
 }

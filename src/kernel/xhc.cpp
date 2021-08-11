@@ -1,23 +1,6 @@
 #include <xhc.hpp>
 
-/**
- * XHCI用割り込みハンドラ 
- */
-struct Message {
-  enum Type {
-    kInterruptXHCI,
-  } type;
-};
 
-ArrayQueue<Message>* main_queue;
-
-usb::xhci::Controller* xhc;
-
-__attribute__((interrupt)) //割込みハンドラ
-void IntHandlerXHCI(IntrFrame* frame) {
-  main_queue->Push(Message{Message::kInterruptXHCI});
-  NotifyEndOfInterrupt();
-}
 
 /**
  * Intel Panther Point チップ対応
@@ -43,159 +26,152 @@ void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
       ehci2xhci_ports);
 }
 
-void xhc_init() {
-  pci::Device* xhc_dev = nullptr;
-  for (int i = 0; i < pci::num_device; ++i) {
-    /*------------------------------------------------------------ 
-      base = 30, sub =03, interface=0c が xHCデバイス
-    ------------------------------------------------------------*/
-    if (pci::devices[i].class_code.Match(0x0Cu, 0x03u, 0x30u)) {
-      xhc_dev = &pci::devices[i];
+// void xhc_init() {
+//   std::array<Message, 32> main_queue_data;
+//   ArrayQueue<Message> main_queue{ main_queue_data };
+//   ::main_queue = &main_queue;
 
-      /*----------------------------------------------------- 
-        Intel製のコントローラを優先する。
-        なおQEMUではNEC製のコントローラがエミュレートされているので、
-        以下のif文では検出されない.
-      -----------------------------------------------------*/
-      if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
-        break;
-      }
-    }
-  }
+//   pci::Device* xhc_dev = nullptr;
+//   for (int i = 0; i < pci::num_device; ++i) {
+//     /*------------------------------------------------------------ 
+//       base = 30, sub =03, interface=0c が xHCデバイス
+//     ------------------------------------------------------------*/
+//     if (pci::devices[i].class_code.Match(0x0Cu, 0x03u, 0x30u)) {
+//       xhc_dev = &pci::devices[i];
 
-  /*-----------------------------------------------------------
-    検出したxHCの情報を表示.
-  -----------------------------------------------------------*/
-  if (xhc_dev) {
-    Log(kInfo, "[XHCI_INFO] xHC has been found: %02d:%02d:%d\n", xhc_dev->bus,
-        xhc_dev->device, xhc_dev->function);
-    Log(kInfo, "[XHCI_INFO] xHC vendor:%04x, device:%04x\n", xhc_dev->vendor_id,
-        xhc_dev->device_id);
-  }
+//       /*----------------------------------------------------- 
+//         Intel製のコントローラを優先する。
+//         なおQEMUではNEC製のコントローラがエミュレートされているので、
+//         以下のif文では検出されない.
+//       -----------------------------------------------------*/
+//       if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
+//         break;
+//       }
+//     }
+//   }
 
-  /*-----------------------------------------------------------
-    IDTをロード
-  -----------------------------------------------------------*/
-  const uint16_t cs = GetCS();
-  Log(kDebug, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
-  Log(kDebug, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
-      reinterpret_cast<uint64_t>(IntHandlerXHCI));
+//   /*-----------------------------------------------------------
+//     検出したxHCの情報を表示.
+//   -----------------------------------------------------------*/
+//   if (xhc_dev) {
+//     Log(kInfo, "[XHCI_INFO] xHC has been found: %02d:%02d:%d\n", xhc_dev->bus,
+//         xhc_dev->device, xhc_dev->function);
+//     Log(kInfo, "[XHCI_INFO] xHC vendor:%04x, device:%04x\n", xhc_dev->vendor_id,
+//         xhc_dev->device_id);
+//   }
 
-  SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
-              reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
-  Log(kDebug, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n",
-      sizeof(idt) / 16);
-  Log(kDebug, "[DEBUG] &idt[0]: 0x%08x\n",
-      reinterpret_cast<uintptr_t>(&idt[0]));
-  Log(kDebug, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
-      reinterpret_cast<uintptr_t>(&idt[IntrVector::kXHCI]));
-  Log(kDebug, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
-      idt[IntrVector::kXHCI].offset_middle, idt[IntrVector::kXHCI].offset_low);
-  LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
+//   /*-----------------------------------------------------------
+//     IDTをロード
+//   -----------------------------------------------------------*/
+//   const uint16_t cs = GetCS();
+//   Log(kDebug, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
+//   Log(kDebug, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
+//       reinterpret_cast<uint64_t>(IntHandlerXHCI));
 
-  /*-----------------------------------------------------------
-    MSIを設定
-  -----------------------------------------------------------*/
-  const uint8_t bsp_local_apic_id =
-      *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
+//   SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
+//               reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
+//   Log(kDebug, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n", sizeof(idt) / 16);
+//   Log(kDebug, "[DEBUG] &idt[0]: 0x%08x\n", reinterpret_cast<uintptr_t>(&idt[0]));
+//   Log(kDebug, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
+//       reinterpret_cast<uintptr_t>(&idt[IntrVector::kXHCI]));
+//   Log(kDebug, "[DEBUG] %016x %08x %08x\n", idt[IntrVector::kXHCI].offset_high,
+//       idt[IntrVector::kXHCI].offset_middle, idt[IntrVector::kXHCI].offset_low);
+//   LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
 
-  Log(kInfo, "[INFO] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
-  Log(kInfo, "[INFO] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
-      pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed,
-      IntrVector::kXHCI);
+//   /*-----------------------------------------------------------
+//     MSIを設定
+//   -----------------------------------------------------------*/
+//   const uint8_t bsp_local_apic_id =
+//       *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
 
-  pci::ConfigureMSIFixedDestination(
-      *xhc_dev, bsp_local_apic_id, pci::MSITriggerMode::kLevel,
-      pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI, 0);
+//   Log(kInfo, "[INFO] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
+//   Log(kInfo, "[INFO] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
+//       pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI);
 
-  /*--------------------------------------------------------------
-    xHCのベースアドレスレジスタの読み取り
-  --------------------------------------------------------------*/
-  const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
-  Log(kInfo, "[XHCI INFO] ReadBar: %s\n", xhc_bar.error.Name());
-  const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
-  Log(kInfo, "[XHCI INFO] xHC MMI/O base address: %08lx\n", xhc_mmio_base);
+//   pci::ConfigureMSIFixedDestination(*xhc_dev, bsp_local_apic_id,
+//                                     pci::MSITriggerMode::kLevel,
+//                                     pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI, 0);
 
-  /*-------------------------------------------------------------
-    xHCIコントローラを制御するためのクラスのインスタンス生成
-  -------------------------------------------------------------*/
-  usb::xhci::Controller xhc{xhc_mmio_base};
+//   /*--------------------------------------------------------------
+//     xHCのベースアドレスレジスタの読み取り
+//   --------------------------------------------------------------*/
+//   const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
+//   Log(kInfo, "[XHCI INFO] ReadBar: %s\n", xhc_bar.error.Name());
+//   const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
+//   Log(kInfo, "[XHCI INFO] xHC MMI/O base address: %08lx\n", xhc_mmio_base);
 
-  /*-------------------------------------------------------------
-    Intel Panther Point チップ対応
-  -------------------------------------------------------------*/
-  if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
-    SwitchEhci2Xhci(*xhc_dev);
-  }
+//   /*-------------------------------------------------------------
+//     xHCIコントローラを制御するためのクラスのインスタンス生成
+//   -------------------------------------------------------------*/
+//   usb::xhci::Controller xhc{ xhc_mmio_base };
 
-  /*-------------------------------------------------------------
-    xHCの初期化(xHCの動作に必要な設定を実施)
-  -------------------------------------------------------------*/
-  {
-    auto err = xhc.Initialize();
-    Log(kInfo, "[XHCI INFO] xhc.Intialize: %s\n", err.Name());
-  }
-  /*-------------------------------------------------------------
-    xHCの起動
-  -------------------------------------------------------------*/
-  Log(kInfo, "[XHCI INFO] xHC starting.\n");
-  xhc.Run();
+//   /*-------------------------------------------------------------
+//     Intel Panther Point チップ対応
+//   -------------------------------------------------------------*/
+//   if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
+//     SwitchEhci2Xhci(*xhc_dev);
+//   }
 
-  ::xhc = &xhc;
+//   /*-------------------------------------------------------------
+//     xHCの初期化(xHCの動作に必要な設定を実施)
+//   -------------------------------------------------------------*/
+//   {
+//     auto err = xhc.Initialize();
+//     Log(kInfo, "[XHCI INFO] xhc.Intialize: %s\n", err.Name());
+//   }
+//   /*-------------------------------------------------------------
+//     xHCの起動
+//   -------------------------------------------------------------*/
+//   Log(kInfo, "[XHCI INFO] xHC starting.\n");
+//   xhc.Run();
 
-  usb::HIDMouseDriver::default_observer = MouseObserver;
+//   ::xhc = &xhc;
 
-  for (int i = 1; i <= xhc.MaxPorts(); ++i) {
-    auto port = xhc.PortAt(i);
-    Log(kInfo, "Port %d: IsConnected=%d\n", i, port.IsConnected());
+//   usb::HIDMouseDriver::default_observer = MouseObserver;
 
-    if (port.IsConnected()) {
-      /*- 注意 -------------------------------------------------------
-        C++のADL(実引数依存の名前検索)のおかげで ConfigurPort() と書けるが、
-        以下では、名前空間 usb::xhci:: を明示しておくこととする 
-      --------------------------------------------------------------*/
-      if (auto err = usb::xhci::ConfigurePort(xhc, port)) {
-        Log(kError, "failed to configure port: %s at %s:%d\n", err.Name(),
-            err.File(), err.Line());
-        continue;
-      }
-    }
-  }
-  std::array<Message, 32> main_queue_data;
-  ArrayQueue<Message> main_queue{main_queue_data};
+//   for (int i = 1; i <= xhc.MaxPorts(); ++i) {
+//     auto port = xhc.PortAt(i);
+//     Log(kInfo, "Port %d: IsConnected=%d\n", i, port.IsConnected());
 
-  ::main_queue = &main_queue;
+//     if (port.IsConnected()) {
+//       /*- 注意 -------------------------------------------------------
+//         C++のADL(実引数依存の名前検索)のおかげで ConfigurPort() と書けるが、
+//         以下では、名前空間 usb::xhci:: を明示しておくこととする 
+//       --------------------------------------------------------------*/
+//       if (auto err = usb::xhci::ConfigurePort(xhc, port)) {
+//         Log(kError, "failed to configure port: %s at %s:%d\n", err.Name(), err.File(),
+//             err.Line());
+//         continue;
+//       }
+//     }
+//   }
 
-  while (true) {
-    __asm__("cli");
-    if (main_queue.Count() == 0) {
-      __asm__("sti\n\thlt");
-      continue;
-    }
+//   while (true) {
+//     __asm__("cli");
+//     if (main_queue.Count() == 0) {
+//       __asm__("sti\n\thlt");
+//       continue;
+//     }
 
-    Message msg = main_queue.Front();
-    main_queue.Pop();
-    __asm__("sti");
+//     Message msg = main_queue.Front();
+//     main_queue.Pop();
+//     __asm__("sti");
 
-    switch (msg.type) {
-      case Message::kInterruptXHCI:
-        while (xhc.PrimaryEventRing()->HasFront()) {
-          if (auto err = usb::xhci::ProcessEvent(xhc)) {
-            Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(),
-                err.File(), err.Line());
-          }
-        }
-        break;
+//     switch (msg.type) {
+//       case Message::kInterruptXHCI:
+//         while (xhc.PrimaryEventRing()->HasFront()) {
+//           if (auto err = usb::xhci::ProcessEvent(xhc)) {
+//             Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(), err.File(),
+//                 err.Line());
+//           }
+//         }
+//         break;
 
-      default:
-        Log(kError, "Unknown message type: %d\n", msg.type);
-    }
-  }
-}
-
-void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-  mouse_cursor->MoveRelative({displacement_x, displacement_y});
-}
+//       default:
+//         Log(kError, "Unknown message type: %d\n", msg.type);
+//     }
+//   }
+// }
 
 extern "C" void __cxa_pure_virtual() {
   halt();

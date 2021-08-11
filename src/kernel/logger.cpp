@@ -8,6 +8,8 @@ void SetLogLevel(LogLevel level) {
   log_level = level;
 }
 
+extern Console* console;
+
 int Log(LogLevel level, const char* format, ...) {
   if (level > log_level) {
     return 0;

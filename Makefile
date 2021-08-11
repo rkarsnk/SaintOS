@@ -78,7 +78,7 @@ QEMU_COMMON=-device nec-usb-xhci,id=xhci \
 disk.img: Loader kernel.elf 
 	rm -rf $@
 	qemu-img create -f raw $@ 200M
-	mkfs.fat -n 'StOS' -s 2 -f 2 -R 32 -F 32 $@
+	mkfs.vfat -n 'StOS' -v -c -F 32 $@
 	mkdir -p ${QEMU_MOUNT} 
 	sudo mount -o loop $@ ${QEMU_MOUNT}
 	sleep 0.5

@@ -4,15 +4,14 @@
 #include <memory>
 #include <vector>
 
-#include "graphics.hpp"
-#include "window.hpp"
+#include <graphics.hpp>
+#include <window.hpp>
 
 /** @brief Layer は 1 つの層を表す。
  *
  * 現状では 1 つのウィンドウしか保持できない設計だが，
  * 将来的には複数のウィンドウを持ち得る。
  */
-// #@@range_begin(layer)
 class Layer {
  public:
   /** @brief 指定された ID を持つレイヤーを生成する。 */
@@ -34,19 +33,19 @@ class Layer {
   void DrawTo(PixelWriter& writer) const;
 
  private:
-  unsigned int id_;
-  Vector2D<int> pos_;
-  std::shared_ptr<Window> window_;
+  unsigned int id_;                 //Layer識別ID
+  Vector2D<int> pos_;               //原点座標
+  std::shared_ptr<Window> window_;  //ウィンドウへのポインタ
 };
-// #@@range_end(layer)
 
 /** @brief LayerManager は複数のレイヤーを管理する。 */
-// #@@range_begin(layer_manager)
 class LayerManager {
  public:
   /** @brief Draw メソッドなどで描画する際の描画先を設定する。 */
   void SetWriter(PixelWriter* writer);
-  /** @brief 新しいレイヤーを生成して参照を返す。
+  
+  /** 
+   * @brief 新しいレイヤーを生成して参照を返す。
    *
    * 新しく生成されたレイヤーの実体は LayerManager 内部のコンテナで保持される。
    */
@@ -57,6 +56,7 @@ class LayerManager {
 
   /** @brief レイヤーの位置情報を指定された絶対座標へと更新する。再描画はしない。 */
   void Move(unsigned int id, Vector2D<int> new_position);
+  
   /** @brief レイヤーの位置情報を指定された相対座標へと更新する。再描画はしない。 */
   void MoveRelative(unsigned int id, Vector2D<int> pos_diff);
 
@@ -74,10 +74,9 @@ class LayerManager {
   PixelWriter* writer_{ nullptr };
   std::vector<std::unique_ptr<Layer>> layers_{};
   std::vector<Layer*> layer_stack_{};
-  unsigned int latest_id_{ 0 };
+  unsigned int latest_id_{ 0 }; //Layer ID
 
   Layer* FindLayer(unsigned int id);
 };
 
 extern LayerManager* layer_manager;
-// #@@range_end(layer_manager)

@@ -10,6 +10,10 @@ Window::Window(int width, int height) : width_{ width }, height_{ height } {
   }
 }
 
+/**
+ * DrawToメソッド
+ * Windowの内容を描画するメソッド
+ */
 void Window::DrawTo(PixelWriter& writer, Vector2D<int> position) {
   if (!transparent_color_) {
     for (int y = 0; y < Height(); ++y) {

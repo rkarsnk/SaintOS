@@ -5,6 +5,7 @@
 #include <logger.hpp>
 #include <mouse.hpp>
 #include <pci.hpp>
+#include <layer.hpp>
 
 #include <asmfunc.h>
 #include <cpufunc.hpp>

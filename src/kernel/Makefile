@@ -1,8 +1,9 @@
 TARGET = kernel.elf
-OBJS = main.o font.o framebuffer.o operator.o printk.o logger.o \
+OBJS = main.o font.o framebuffer.o operator.o logger.o \
 	   lib/newlib_support.o lib/libcxx_support.o \
 	   c_graphics.o c_console.o c_mouse.o \
 	   pci.o xhc.o interrupt.o segment.o pageing.o mmgr.o\
+	   layer.o window.o \
 	   hankaku.o \
 	   asmfunc.o \
 	   kernel_entry.o \

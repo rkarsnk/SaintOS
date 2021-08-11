@@ -320,6 +320,7 @@ namespace pci {
 
 }  //namespace pci
 
+/*
 void pci_scan() {
   auto err = pci::ScanAllBus();
   Log(kInfo, "[INFO] ScanAllBus: %s\n", err.Name());
@@ -336,3 +337,4 @@ void pci_scan() {
         dev.header_type);
   }
 }
+*/
