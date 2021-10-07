@@ -15,6 +15,7 @@
 #include <framebuffer.hpp>  //フレームバッファ初期化
 #include <graphics.hpp>     //PixelWriterクラス
 #include <interrupt.hpp>    //割込み
+#include <layer.hpp>        //layer管理
 #include <logger.hpp>       //log関数
 #include <mmgr.hpp>         //MemoryManager
 #include <mouse.hpp>        //Mouseクラス
@@ -22,10 +23,8 @@
 #include <pageing.hpp>      //ページング
 #include <pci.hpp>          //pci初期化・探索
 #include <segment.hpp>      //segment
+#include <window.hpp>       //window管理
 #include <xhc.hpp>          //xhc探索
-
-#include <layer.hpp>
-#include <window.hpp>
 
 // C header
 #include <frame_buffer_config.h>
@@ -138,8 +137,7 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
   framebuffer_init(frame_buffer_config, { 0x00, 0x00, 0x00 });
 
   //console_init();
-  console = new (console_buf)
-      Console{kDesktopFGColor, kDesktopBGColor};
+  console = new (console_buf) Console{ kDesktopFGColor, kDesktopBGColor };
 
   printk("Hello. SaintOS World.\n");
 
@@ -308,7 +306,6 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
   layer_manager->UpDown(bglayer_id, 0);
   layer_manager->UpDown(mouse_layer_id, 1);
   layer_manager->Draw();
-
 
   while (true) {
     __asm__("cli");
