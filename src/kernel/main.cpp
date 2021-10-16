@@ -3,9 +3,15 @@
  *
  * カーネル本体のプログラムを書いたソースファイル.
  */
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <numeric>
 #include <vector>
+// C header
+#include <frame_buffer_config.h>
+
 // C++ header
 #include <asmfunc.h>        //アセンブラ
 #include <console.hpp>      //Consoleクラス
@@ -16,7 +22,6 @@
 #include <graphics.hpp>     //PixelWriterクラス
 #include <interrupt.hpp>    //割込み
 #include <layer.hpp>        //layer管理
-#include <logger.hpp>       //log関数
 #include <mmgr.hpp>         //MemoryManager
 #include <mouse.hpp>        //Mouseクラス
 #include <operator.hpp>     //配置new
@@ -24,10 +29,17 @@
 #include <pci.hpp>          //pci初期化・探索
 #include <segment.hpp>      //segment
 #include <window.hpp>       //window管理
-#include <xhc.hpp>          //xhc探索
 
-// C header
-#include <frame_buffer_config.h>
+#include <error.hpp>
+#include <logger.hpp>  //log関数
+#include <queue.hpp>
+
+#include <usb/device.hpp>
+#include <usb/memory.hpp>
+#include <usb/xhci/trb.hpp>
+#include <usb/xhci/xhci.hpp>
+
+#include <usb/classdriver/mouse.hpp>
 
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
 PixelWriter* pixel_writer;
@@ -48,7 +60,8 @@ int printk(const char* format, ...) {
   return result;
 }
 
-alignas(16) uint8_t kernel_main_stack[1024 * 1024];
+char memory_manager_buf[sizeof(BitmapMemoryManager)];
+BitmapMemoryManager* memory_manager;
 
 unsigned int mouse_layer_id;
 
@@ -56,6 +69,32 @@ void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
   layer_manager->MoveRelative(mouse_layer_id, { displacement_x, displacement_y });
   layer_manager->Draw();
 }
+
+/**
+ * Intel Panther Point チップ対応
+ */
+void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
+  bool intel_ehc_exist = false;
+  for (int i = 0; i < pci::num_device; ++i) {
+    if (pci::devices[i].class_code.Match(0x0cu, 0x03u, 0x20u) /* EHCI */ &&
+        PCI_VENDOR_INTEL == pci::ReadVendorId(pci::devices[i])) {
+      intel_ehc_exist = true;
+      break;
+    }
+  }
+  if (!intel_ehc_exist) {
+    return;
+  }
+
+  uint32_t superspeed_ports = pci::ReadConfReg(xhc_dev, 0xdc);  // USB3PRM
+  pci::WriteConfReg(xhc_dev, 0xd8, superspeed_ports);           // USB3_PSSEN
+  uint32_t ehci2xhci_ports = pci::ReadConfReg(xhc_dev, 0xd4);   // XUSB2PRM
+  pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports);            // XUSB2PR
+  Log(kInfo, "SwitchEhci2Xhci: SS = %02x, xHCI = %02x\n", superspeed_ports,
+      ehci2xhci_ports);
+}
+
+usb::xhci::Controller* xhc;
 
 /**
  * XHCI用割り込みハンドラ 
@@ -68,13 +107,12 @@ struct Message {
 
 ArrayQueue<Message>* main_queue;
 
-usb::xhci::Controller* xhc;
-
-__attribute__((interrupt)) //割込みハンドラ
-void IntHandlerXHCI(IntrFrame* frame) {
+__attribute__((interrupt)) void IntHandlerXHCI(IntrFrame* frame) {
   main_queue->Push(Message{ Message::kInterruptXHCI });
   NotifyEndOfInterrupt();
 }
+
+alignas(16) uint8_t kernel_main_stack[1024 * 1024];
 
 /**
  * KernelMainNewStack() 
@@ -84,14 +122,43 @@ void IntHandlerXHCI(IntrFrame* frame) {
  */
 extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_ref,
                                    const MemoryMap& memory_map_ref) {
-  SetLogLevel(kInfo);
-
   FrameBufferConfig frame_buffer_config{ frame_buffer_config_ref };
   MemoryMap memory_map{ memory_map_ref };
 
-  uint32_t size_of_stack = sizeof(kernel_main_stack);
+  /*------------------------------------------------------------------------
+  フレームバッファを初期化
+  -------------------------------------------------------------------------*/
+  switch (frame_buffer_config.pixel_format) {
+    case kPixelRGBResv8BitPerColor:
+      pixel_writer =
+          new (pixel_writer_buf) RGBResv8BitPerColorPixelWriter{ frame_buffer_config };
+      break;
+    case kPixelBGRResv8BitPerColor:
+      pixel_writer =
+          new (pixel_writer_buf) BGRResv8BitPerColorPixelWriter{ frame_buffer_config };
+      break;
+  }
+  /*-------------------------------------------------------------------------
+  デスクトップの描画
+  -------------------------------------------------------------------------*/
+  DrawDesktop(*pixel_writer);
 
+  /*-------------------------------------------------------------------------
+  コンソールの初期化
+  -------------------------------------------------------------------------*/
+  console = new (console_buf) Console{ kDesktopFGColor, kDesktopBGColor };
+  console->SetWriter(pixel_writer);
+  printk("Hello. SaintOS World.\n");
+
+  SetLogLevel(kInfo);
+  Log(kInfo, "[INFO] Console Format:%d rows * %d columns.\n", console->ttyRows,
+      console->ttyColumns);
+
+  /*--------------------------------------------------------------------------
+  セグメントのセットアップ
+  --------------------------------------------------------------------------*/
   SetupSegments();
+
   const uint16_t kernel_cs = 1 << 3;  //kernel code segment
   const uint16_t kernel_ss = 2 << 3;  //kernel stack segment
   SetDSAll(0);
@@ -99,8 +166,10 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
 
   SetupIdentityPageTable();
 
-  //メモリマネージャの初期化
-  memory_manager = new (memory_manager_buf) BitmapMemoryManager;
+  /*-------------------------------------------------------------------------
+  メモリマネージャの初期化
+  -------------------------------------------------------------------------*/
+  ::memory_manager = new (memory_manager_buf) BitmapMemoryManager;
 
   const auto memory_map_base = reinterpret_cast<uintptr_t>(memory_map.buffer);
   uintptr_t available_end    = 0;
@@ -131,23 +200,18 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         err.Line());
     exit(1);
   }
-  //メモリマネージャの初期化終了
 
-  /*フレームバッファを初期化*/
-  framebuffer_init(frame_buffer_config, { 0x00, 0x00, 0x00 });
-
-  //console_init();
-  console = new (console_buf) Console{ kDesktopFGColor, kDesktopBGColor };
-
-  printk("Hello. SaintOS World.\n");
-
-  Log(kInfo, "[INFO] Console Format:%d rows * %d columns.\n", console->ttyRows,
-      console->ttyColumns);
-
+  /*----------------------------------------------------------------------
+  カーネルスタックの情報を表示
+  ----------------------------------------------------------------------*/
+  uint32_t size_of_stack = sizeof(kernel_main_stack);
   Log(kInfo, "[INFO] Kernel Stack begin: 0x%08x, length: %08x(%d)\n", &kernel_main_stack,
       size_of_stack, size_of_stack);
 
-  //pci_scan();
+  std::array<Message, 32> main_queue_data;
+  ArrayQueue<Message> main_queue{ main_queue_data };
+  ::main_queue = &main_queue;
+
   auto err = pci::ScanAllBus();
   Log(kInfo, "[INFO] ScanAllBus: %s\n", err.Name());
 
@@ -163,11 +227,10 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         dev.header_type);
   }
 
-  //xhc_init();
-  std::array<Message, 32> main_queue_data;
-  ArrayQueue<Message> main_queue{ main_queue_data };
-  ::main_queue = &main_queue;
-
+  /*----------------------------------------------------- 
+  Intel製のコントローラを優先する。
+  なおQEMUではNEC製のコントローラがエミュレートされている。
+  -----------------------------------------------------*/
   pci::Device* xhc_dev = nullptr;
   for (int i = 0; i < pci::num_device; ++i) {
     /*------------------------------------------------------------ 
@@ -176,11 +239,6 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     if (pci::devices[i].class_code.Match(0x0Cu, 0x03u, 0x30u)) {
       xhc_dev = &pci::devices[i];
 
-      /*----------------------------------------------------- 
-        Intel製のコントローラを優先する。
-        なおQEMUではNEC製のコントローラがエミュレートされているので、
-        以下のif文では検出されない.
-      -----------------------------------------------------*/
       if (PCI_VENDOR_INTEL == pci::ReadVendorId(*xhc_dev)) {
         break;
       }
@@ -200,13 +258,8 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
   /*-----------------------------------------------------------
     IDTをロード
   -----------------------------------------------------------*/
-  const uint16_t cs = GetCS();
-  Log(kDebug, "[DEBUG] Code Segment Address: 0x%08x\n", cs);
-  Log(kDebug, "[DEBUG] IntHandlerXHCI: 0x%08x\n",
-      reinterpret_cast<uint64_t>(IntHandlerXHCI));
-
   SetIDTEntry(idt[IntrVector::kXHCI], MakeIDTAttr(DescType::kInterruptGate, 0),
-              reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
+              reinterpret_cast<uint64_t>(IntHandlerXHCI), kernel_cs);
   Log(kDebug, "[DEBUG] Length of IDTEntry : sizeof(idt)/16 = %d\n", sizeof(idt) / 16);
   Log(kDebug, "[DEBUG] &idt[0]: 0x%08x\n", reinterpret_cast<uintptr_t>(&idt[0]));
   Log(kDebug, "[DEBUG] &idt[0x%02x]: 0x%08x\n", IntrVector::kXHCI,
@@ -220,11 +273,9 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
   -----------------------------------------------------------*/
   const uint8_t bsp_local_apic_id =
       *reinterpret_cast<const uint32_t*>(LAPIC_ID_REG) >> 24;
-
   Log(kInfo, "[INFO] BSP LocalAPIC ID: %d\n", bsp_local_apic_id);
   Log(kInfo, "[INFO] TriggerMode: %d, DeliverlyMode: %d ,Vector: 0x%02x\n",
       pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI);
-
   pci::ConfigureMSIFixedDestination(*xhc_dev, bsp_local_apic_id,
                                     pci::MSITriggerMode::kLevel,
                                     pci::MSIDeliveryMode::kFixed, IntrVector::kXHCI, 0);
@@ -283,6 +334,9 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     }
   }
 
+  /*-----------------------------------------------------------------
+  ウィンドウの描画
+  -----------------------------------------------------------------*/
   const int kFrameWidth  = frame_buffer_config.horizontal_resolution;
   const int kFrameHeight = frame_buffer_config.vertical_resolution;
 
@@ -332,6 +386,8 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         Log(kError, "Unknown message type: %d\n", msg.type);
     }
   }
+}
 
+extern "C" void __cxa_pure_virtual() {
   halt();
 }
