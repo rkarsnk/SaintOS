@@ -9,3 +9,4 @@ debug.log
 gdbscript
 debug/*
 !debug/startup.nsh
+/tools/edk2
